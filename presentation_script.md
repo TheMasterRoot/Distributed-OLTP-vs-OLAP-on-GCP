@@ -2,7 +2,9 @@
 
 ## Slide 1: Introduction
 **Title: Deep Dive: Mastering Architectural Decisions (Expert Level)**
-"Hello everyone. I know looking at the attendees today that I'm speaking to seasoned engineers who have built, broken, and fixed massive systems. Today, we aren't talking about the 'what'—we are talking about the 'how'. Specifically, how to master the tension between Distributed OLTP and OLAP on Google Cloud. We'll go beyond the marketing slides and talk about Paxos nodes, TrueTime uncertainty, and Dremel leaf workers. This is a 30-minute deep dive into the physics of data."
+"Hello everyone. When we talk about OLTP and OLAP, the discussion usually stays at a basic, conceptual level. But in practice, what really matters is how these choices impact latency, cost, and scalability in production.
+In GCP, with tools like Cloud Spanner and BigQuery, this isn’t just a conceptual decision — it fundamentally changes how the system behaves.
+So today, I’ll focus on real-world decisions: when to use each, the trade-offs involved, and the most common mistakes I see happening in practice."
 
 ---
 
