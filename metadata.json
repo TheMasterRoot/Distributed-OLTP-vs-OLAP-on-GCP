@@ -1,0 +1,6 @@
+{
+  "name": "Cloud Data Architecture Masterclass",
+  "description": "An expert-level interactive presentation on technical deep dives into Distributed OLTP (Spanner, Cloud SQL) and OLAP (BigQuery) architectures on GCP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
