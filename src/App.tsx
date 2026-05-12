@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, 
   ChevronRight, 
+  BookOpen,
   Database, 
   BarChart3, 
   AlertTriangle, 
@@ -24,6 +25,7 @@ import {
   Globe,
   Settings
 } from 'lucide-react';
+import presentationScript from '../presentation_script.md?raw';
 
 // Google Cloud Brand Colors
 const GCP_COLORS = {
@@ -576,8 +578,55 @@ SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
   }
 ];
 
+function ScriptPage() {
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] text-[#202124]">
+      <header className="sticky top-0 z-20 border-b border-[#D2E3FC] bg-white/95 backdrop-blur px-6 py-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F0FE] text-[#4285F4]">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#4285F4]">Presentation Script</p>
+              <h1 className="text-xl font-black tracking-tight">Cloud Data Architecture at Scale</h1>
+            </div>
+          </div>
+
+          <a
+            href="/"
+            className="rounded-full border border-[#D2E3FC] bg-[#E8F0FE] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#1967D2] transition hover:bg-[#D2E3FC]"
+          >
+            Back to slides
+          </a>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mb-6 rounded-2xl border border-[#D2E3FC] bg-white p-5 shadow-sm">
+          <p className="text-sm leading-6 text-[#5F6368]">
+            This page exposes the full speaker notes from <code className="rounded bg-slate-100 px-1.5 py-0.5">presentation_script.md</code>,
+            so attendees can follow the detailed speech during or after the session.
+          </p>
+        </div>
+
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-[#3C4043]">
+            {presentationScript}
+          </pre>
+        </article>
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+  if (normalizedPath === '/script') {
+    return <ScriptPage />;
+  }
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => Math.min(prev + 1, slides.length - 1));
@@ -619,9 +668,13 @@ export default function App() {
             </div>
           </div>
           <div className="text-right hidden sm:block">
-            <div className="text-[10px] md:text-xs font-bold text-[#4285F4] bg-[#E8F0FE] px-3 py-1 rounded-full inline-block border border-[#D2E3FC]">
+            <a
+              href="/script"
+              className="text-[10px] md:text-xs font-bold text-[#4285F4] bg-[#E8F0FE] px-3 py-1 rounded-full inline-block border border-[#D2E3FC] transition hover:bg-[#D2E3FC]"
+            >
               SESSION: POD GDC-02
-            </div>
+              <span className="ml-2 text-[#1967D2]">/script</span>
+            </a>
           </div>
         </header>
 
