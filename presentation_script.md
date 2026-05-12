@@ -114,19 +114,25 @@ So the trade-off is simple: hash sharding is usually better for even write distr
 
 ## Slide 8: Avoiding Hotspots with Consistent Hashing
 **Title: Avoiding Hotspots with Consistent Hashing**
-"Now let's talk about hotspots and consistent hashing, because this is where manual sharding becomes difficult.
+"Now let's talk about hotspots and consistent hashing, because this is where manual sharding becomes difficult. This slide shows the mental model I want you to remember: the hash ring.
 
 A **hotspot** happens when too much traffic goes to the same shard, node, key range, or physical partition. This can happen with sequential IDs, timestamps, tenant IDs, or any key where the traffic is not evenly distributed.
 
 With simple hash sharding, a common implementation is `hash(user_id) % N`. The problem is that `N` is the number of shards. If you change from 10 shards to 11 shards, the modulo result changes for many keys. That means a large percentage of your data suddenly belongs on a different shard. This is the resharding tax.
 
-**Consistent Hashing:** Consistent hashing reduces this problem by placing shards on a logical hash ring. Instead of recalculating every key against a new shard count, each key maps to a point on the ring and belongs to the next shard clockwise. When you add a new shard, only a portion of the key space moves to the new shard.
+**Consistent Hashing:** Consistent hashing reduces this problem by placing both data keys and nodes on the same logical ring. Think of the ring as a number line that wraps around on itself. In the diagram, the nodes are placed around the circle, and each request is also mapped to a position on that same circle.
 
-For example, imagine shards A, B, and C on a ring. User 123 hashes to a point between A and B, so it belongs to B. If we add shard D between A and B, only the keys in that specific interval move to D. The rest of the data stays where it is.
+To decide where the data goes, we start at the request position and move clockwise until we find the next healthy node. That next node owns the key. If one node fails, the affected requests continue clockwise to the next healthy node. The important point is that only the ranges near the failed or added node are reassigned. The whole dataset does not need to move.
 
-**Virtual Nodes:** In real systems, each physical shard is often represented by many virtual nodes on the ring. This improves balance. If shard A has 100 virtual positions and shard B has 100 virtual positions, the distribution is smoother than if each shard appears only once.
+**Virtual Nodes:** In real systems, we usually do not place each physical node on the ring only once. Instead, each physical node appears multiple times as virtual nodes. So Node 0 may appear as `Node0-v1`, `Node0-v2`, and `Node0-v3`; Node 2 may appear as `Node2-v1`, `Node2-v2`, and `Node2-v3`; and so on.
 
-This helps avoid hotspots, but it does not magically solve every problem. If one tenant is responsible for 40 percent of all writes, hashing by `tenant_id` may still create a hot shard. In that case, you may need a compound key such as `hash(tenant_id + user_id)` or a write bucketing strategy such as `hash(user_id) + time_bucket`.
+Virtual nodes make the distribution smoother. If each physical node appears only once, one node might accidentally own a very large part of the ring. With many virtual nodes, ownership is spread across many smaller intervals, so the traffic is more balanced.
+
+This also helps with adding or removing capacity. If Node D is added to the ring, only the keys in the intervals now owned by Node D need to move. The rest of the ring stays stable. If Node B fails, only the ranges owned by `B1`, `B2`, and `B3` need to move to their next clockwise neighbors.
+
+This is why consistent hashing is common in distributed caches, key-value stores, and systems that need to rebalance data without moving everything.
+
+But there is one important warning: consistent hashing helps with distribution mechanics, but it does not magically solve bad key design. If one tenant is responsible for 40 percent of all writes, hashing only by `tenant_id` may still create a hot shard. In that case, you may need a compound key such as `hash(tenant_id + user_id)` or a write bucketing strategy such as `hash(user_id) + time_bucket`.
 
 The key lesson is that hash design is workload design. You need to choose a distribution key that spreads the actual traffic, not just the number of rows."
 

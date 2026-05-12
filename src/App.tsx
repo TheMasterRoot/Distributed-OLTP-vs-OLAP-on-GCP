@@ -88,7 +88,7 @@ const slides: Slide[] = [
     title: 'What We Will Cover Today',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="w-full max-w-6xl">
+      <div className="w-full max-w-none">
         <div className="mb-8 text-center">
           <p className="text-xs font-black uppercase tracking-[0.35em] text-[#4285F4]">Session Roadmap</p>
           <h2 className="mt-3 text-4xl font-black tracking-tight text-[#202124]">From OLTP Limits to OLAP Scale</h2>
@@ -156,7 +156,7 @@ const slides: Slide[] = [
     title: 'OLTP Layer: The Growth Wall',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
         <div className="space-y-6">
           <div className="bg-[#E8F0FE] p-6 rounded-xl border border-blue-100">
             <h3 className="text-lg font-bold text-[#1967D2] mb-3">When Single Node Fails</h3>
@@ -196,7 +196,7 @@ const slides: Slide[] = [
     title: 'Cloud SQL: MVCC & The WAL',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
         <div className="space-y-6">
           <div className="bg-[#E8F0FE] p-6 rounded-xl border border-blue-100">
             <h3 className="text-lg font-bold text-[#1967D2] mb-3">Postgres Internals: MVCC</h3>
@@ -232,7 +232,7 @@ ORDER BY n_dead_tup DESC;`}
     title: 'Advanced Indexing: Beyond B-Trees',
     accentColor: GCP_COLORS.red,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
         <div className="space-y-6">
           <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
             <h4 className="text-sm font-bold text-slate-800 mb-4">01. Partial Indexes</h4>
@@ -270,7 +270,7 @@ ON orders(created_at DESC);`}
     title: 'Decision Fork: How to Scale?',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="w-full max-w-5xl mx-auto overflow-hidden rounded-2xl shadow-lg bg-white border border-slate-200">
+      <div className="w-full max-w-none mx-auto overflow-hidden rounded-2xl shadow-lg bg-white border border-slate-200">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-900 text-white">
@@ -318,7 +318,7 @@ ON orders(created_at DESC);`}
     title: 'Distributed OLTP: Hash vs Range Sharding',
     accentColor: GCP_COLORS.red,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
         <div className="space-y-6">
           <div className="p-6 bg-red-50 rounded-xl border border-red-100">
             <h3 className="font-bold text-[#EA4335] mb-4">Sharding Logic: Hash vs Range</h3>
@@ -369,56 +369,78 @@ ON orders(created_at DESC);`}
     title: 'Avoiding Hotspots with Consistent Hashing',
     accentColor: GCP_COLORS.red,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 w-full max-w-6xl">
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
-            <h3 className="mb-4 flex items-center gap-3 text-xl font-black text-[#EA4335]">
-              <AlertTriangle className="h-6 w-6" />
-              Hotspot = Too Much Traffic in One Place
+      <div className="grid h-full w-full max-w-none grid-cols-1 gap-5 md:grid-cols-[0.78fr_1.22fr]">
+        <div className="flex min-h-0 flex-col gap-4">
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
+            <h3 className="mb-2 flex items-center gap-3 text-lg font-black text-[#EA4335]">
+              <Globe className="h-6 w-6" />
+              Hash Ring: Keys Move Clockwise
             </h3>
-            <p className="text-sm leading-7 text-slate-700">
-              Hotspots happen when writes concentrate on one shard, one key range, or one physical partition.
-              Sequential IDs, timestamps, and high-traffic tenants are classic causes.
+            <p className="text-xs leading-6 text-slate-700">
+              Every key and every node is hashed onto the same logical ring. To store a key,
+              move clockwise until you find the next node position. That node owns the data.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h4 className="mb-2 text-sm font-black text-slate-800">Problem: Modulo Hashing</h4>
-              <pre className="rounded-lg bg-slate-900 p-3 text-[10px] text-green-400">
-{`shard = hash(user_id) % 10
-
-// Add one shard:
-shard = hash(user_id) % 11
-
-// Many keys move.`}
-              </pre>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h4 className="mb-2 text-sm font-black text-slate-800">Fix: Consistent Hashing</h4>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h4 className="mb-2 text-sm font-black text-slate-800">Why not <code>hash(key) % N</code>?</h4>
               <p className="text-xs leading-6 text-slate-600">
-                Place shards on a logical hash ring. When a new shard is added, only a portion of the key space moves.
-                Use virtual nodes to smooth the distribution.
+                When <code>N</code> changes from 10 to 11, many keys calculate a different shard.
+                Consistent hashing avoids this by moving only the key range owned by the changed node.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h4 className="mb-2 text-sm font-black text-slate-800">Virtual Nodes Smooth the Load</h4>
+              <p className="text-xs leading-6 text-slate-600">
+                A physical node appears multiple times on the ring, like <strong>A1</strong>, <strong>A2</strong>, and <strong>A3</strong>.
+                This prevents one unlucky node position from owning a huge portion of the key space.
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
-          <Globe className="mb-5 h-10 w-10 text-[#FBBC04]" />
-          <h3 className="mb-4 text-2xl font-black">Design the Key for the Traffic</h3>
-          <div className="space-y-5 text-sm leading-7 text-slate-300">
-            <p>
-              Hashing spreads rows, but the real goal is spreading load. If one tenant creates 40% of writes,
-              hashing only by <code className="rounded bg-white/10 px-1">tenant_id</code> can still create a hot shard.
-            </p>
-            <p>
-              Better options include compound keys like <code className="rounded bg-white/10 px-1">hash(tenant_id + user_id)</code>
-              or write buckets such as <code className="rounded bg-white/10 px-1">hash(user_id) + time_bucket</code>.
+          <div className="rounded-2xl bg-slate-900 p-4 text-white">
+            <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#FBBC04]">
+              <AlertTriangle className="h-4 w-4" />
+              Hotspot Reminder
+            </h4>
+            <p className="text-xs leading-6 text-slate-300">
+              Hashing balances data positions, but the key must represent the real traffic.
+              For a noisy tenant, prefer keys like <code className="rounded bg-white/10 px-1">hash(tenant_id + user_id)</code>
+              instead of only <code className="rounded bg-white/10 px-1">tenant_id</code>.
             </p>
           </div>
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs font-bold uppercase tracking-widest text-[#FBBC04]">
-            Hash design is workload design.
+        </div>
+
+        <div className="flex min-h-0 flex-col rounded-3xl border border-[#D2E3FC] bg-[#E8F0FE] p-4 shadow-2xl">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#4285F4]">Consistent Hashing</p>
+              <h3 className="text-xl font-black text-[#202124]">Ring Routing, Failure, and Virtual Nodes</h3>
+            </div>
+            <div className="hidden rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#1967D2] shadow-sm sm:block">
+              Only affected ranges move
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-white p-2">
+            <img
+              src="/assets/consistent-hashing.png"
+              alt="Consistent hashing ring showing healthy nodes, a failed node, and requests reassigned clockwise"
+              className="max-h-full w-full object-contain"
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white p-2 text-center">
+              <p className="text-[10px] font-black text-[#1967D2]">1. Hash request</p>
+            </div>
+            <div className="rounded-xl bg-white p-2 text-center">
+              <p className="text-[10px] font-black text-[#EA4335]">2. Walk clockwise</p>
+            </div>
+            <div className="rounded-xl bg-white p-2 text-center">
+              <p className="text-[10px] font-black text-[#188038]">3. Use next healthy node</p>
+            </div>
           </div>
         </div>
       </div>
@@ -430,7 +452,7 @@ shard = hash(user_id) % 11
     title: 'Cloud Spanner: Distributed Consistency',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="space-y-8 w-full max-w-5xl">
+      <div className="space-y-8 w-full max-w-none">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl border-t-4 border-[#4285F4] shadow-md">
             <h4 className="font-bold text-sm mb-2">Anti-Pattern: Monotonic PKs</h4>
@@ -472,7 +494,7 @@ ON DELETE CASCADE`}
     title: 'BigQuery: The Dremel Engine Architecture',
     accentColor: GCP_COLORS.green,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-none">
         <div className="space-y-6">
           <div className="p-6 bg-green-50 rounded-xl border border-green-100">
             <h3 className="font-bold text-green-800 mb-2">Physical Layout: Partitioning vs Clustering</h3>
@@ -522,7 +544,7 @@ CLUSTER BY user_id, status;`}
     title: 'Under the Hood: How it Actually Works',
     accentColor: GCP_COLORS.red,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-none">
         <div className="bg-white p-8 rounded-2xl shadow-lg border-b-8 border-[#4285F4]">
           <Cpu className="text-[#4285F4] mb-4 w-10 h-10" />
           <h3 className="font-bold text-lg mb-4 text-slate-800">Spanner: Paxos + TrueTime</h3>
@@ -556,7 +578,7 @@ CLUSTER BY user_id, status;`}
     title: 'The Glue: CDC & Zero-ETL',
     accentColor: GCP_COLORS.yellow,
     content: (
-      <div className="flex flex-col items-center justify-center space-y-12 max-w-6xl mx-auto">
+      <div className="flex flex-col items-center justify-center space-y-12 w-full max-w-none mx-auto">
         <div className="bg-white p-10 rounded-3xl shadow-xl w-full border-t-8 border-[#FBBC04]">
           <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
              <ArrowRightLeft className="text-[#FBBC04]" /> 
@@ -582,7 +604,7 @@ CLUSTER BY user_id, status;`}
           </div>
         </div>
 
-        <div className="p-6 bg-[#3C4043] rounded-2xl text-white w-full max-w-4xl">
+        <div className="p-6 bg-[#3C4043] rounded-2xl text-white w-full max-w-none">
            <h4 className="text-[#FBBC04] font-bold mb-2">Cloud Spanner to BigQuery Federated Query</h4>
            <p className="text-sm text-slate-300">
              Need live data in BQ? Use `EXTERNAL_QUERY`. It pulls live data directly from Spanner into BQ memory for the JOIN, but be careful with pushdown filters!
@@ -596,7 +618,7 @@ CLUSTER BY user_id, status;`}
     title: 'Senior Tweaks: The Query Plan',
     accentColor: GCP_COLORS.dark,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
         <div className="space-y-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200">
             <h4 className="font-bold text-[#EA4335] mb-2 uppercase text-[10px]">Cloud SQL: Bloat Detect</h4>
@@ -654,7 +676,7 @@ SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
     accentColor: GCP_COLORS.blue,
     content: (
       <div className="flex flex-col items-center justify-center h-full space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-none">
           <div className="bg-[#4285F4] text-white p-8 rounded-3xl shadow-xl flex flex-col justify-center items-center text-center">
             <div className="text-4xl font-bold mb-2">1</div>
             <p className="font-medium">Transaction Integrity First. Use Spanner for Global, Cloud SQL for Local.</p>
@@ -694,7 +716,7 @@ SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
           <p className="text-xl text-slate-500 font-medium tracking-wide">Let's discuss Slot management, Spanner split points, or Federation strategies.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-none">
           <a
             href="https://github.com/TheMasterRoot/Distributed-OLTP-vs-OLAP-on-GCP"
             target="_blank"
@@ -796,9 +818,9 @@ export default function App() {
   const slide = slides[currentSlide];
 
   return (
-    <div className="fixed inset-0 bg-[#F8F9FA] overflow-hidden flex items-center justify-center p-0 md:p-4">
+    <div className="fixed inset-0 bg-[#F8F9FA] overflow-hidden flex items-center justify-center px-5 py-2.5">
       {/* Main Presentation Container (Geometric Shell) */}
-      <div className="w-full h-full max-w-[1280px] max-h-[800px] bg-white text-[#3C4043] font-sans overflow-hidden flex flex-col border-[6px] md:border-[8px] border-[#4285F4] shadow-2xl relative">
+      <div className="w-full h-full bg-white text-[#3C4043] font-sans overflow-hidden flex flex-col border-[6px] md:border-[8px] border-[#4285F4] shadow-2xl relative">
         
         {/* Header Section */}
         <header className="h-20 md:h-24 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20">
@@ -834,18 +856,18 @@ export default function App() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 1.02, y: -10 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full h-full p-6 md:p-10 flex flex-col items-center justify-center"
+              className="w-full h-full px-14 py-4 md:px-20 md:py-5 flex flex-col items-center justify-center"
             >
-              <div className="w-full h-full max-w-6xl mx-auto flex flex-col">
+              <div className="w-full h-full max-w-none mx-auto flex flex-col">
                 {/* Slide Title Indicator */}
-                <div className="mb-8 hidden md:block">
+                <div className="mb-4 hidden md:block">
                   <div className="flex items-center gap-2 text-[#4285F4] font-bold text-sm uppercase tracking-tighter">
                      <span className="w-8 h-0.5 bg-[#4285F4]"></span>
                      <span>Slide {String(currentSlide + 1).padStart(2, '0')} — {slide.title}</span>
                   </div>
                 </div>
 
-                <div className="flex-grow flex items-center justify-center">
+                <div className="min-h-0 flex-grow flex items-center justify-center">
                   {slide.content}
                 </div>
               </div>
