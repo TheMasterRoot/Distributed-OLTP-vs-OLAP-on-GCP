@@ -872,7 +872,7 @@ export default function App() {
             className={`p-3 md:p-4 rounded-full transition-all shadow-lg active:scale-90 pointer-events-auto ${
               currentSlide === slides.length - 1 
                 ? 'bg-white/50 text-slate-200 cursor-not-allowed opacity-0' 
-                : 'bg-white text-white bg-[#202124] hover:bg-black border border-[#202124]'
+                : 'bg-white text-slate-800 hover:bg-slate-50 border border-slate-100'
             }`}
           >
             <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
