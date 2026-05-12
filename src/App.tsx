@@ -84,6 +84,74 @@ const slides: Slide[] = [
     )
   },
   {
+    id: 'session-roadmap',
+    title: 'What We Will Cover Today',
+    accentColor: GCP_COLORS.blue,
+    content: (
+      <div className="w-full max-w-6xl">
+        <div className="mb-8 text-center">
+          <p className="text-xs font-black uppercase tracking-[0.35em] text-[#4285F4]">Session Roadmap</p>
+          <h2 className="mt-3 text-4xl font-black tracking-tight text-[#202124]">From OLTP Limits to OLAP Scale</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[
+            {
+              icon: Database,
+              title: 'OLTP Growth Wall',
+              text: 'Cloud SQL internals, MVCC, WAL, bloat, indexes, and the moment vertical scaling stops helping.',
+              color: GCP_COLORS.blue
+            },
+            {
+              icon: Settings,
+              title: 'Distributed OLTP',
+              text: 'Manual sharding, hash vs range distribution, consistent hashing, hotspots, and Spanner key design.',
+              color: GCP_COLORS.red
+            },
+            {
+              icon: BarChart3,
+              title: 'OLAP with BigQuery',
+              text: 'Dremel, slots, clustering, partitioning, shuffle, nested fields, and analytical cost control.',
+              color: GCP_COLORS.green
+            },
+            {
+              icon: ArrowRightLeft,
+              title: 'Data Movement',
+              text: 'CDC, Datastream, Zero-ETL patterns, federated queries, and how to avoid hurting production.',
+              color: GCP_COLORS.yellow
+            },
+            {
+              icon: Cpu,
+              title: 'Under the Hood',
+              text: 'TrueTime, Paxos, Dremel trees, query execution plans, and the real physics behind the services.',
+              color: GCP_COLORS.dark
+            },
+            {
+              icon: Layers,
+              title: 'Practical Takeaways',
+              text: 'Architecture rules you can reuse when choosing between Cloud SQL, Spanner, and BigQuery.',
+              color: GCP_COLORS.blue
+            }
+          ].map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute right-4 top-4 text-5xl font-black text-slate-100">{String(index + 1).padStart(2, '0')}</div>
+                <div className="relative">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg" style={{ backgroundColor: item.color }}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mb-3 text-lg font-black text-[#202124]">{item.title}</h3>
+                  <p className="text-sm leading-6 text-[#5F6368]">{item.text}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )
+  },
+  {
     id: 'oltp-growth-wall',
     title: 'OLTP Layer: The Growth Wall',
     accentColor: GCP_COLORS.blue,
@@ -247,7 +315,7 @@ ON orders(created_at DESC);`}
   },
   {
     id: 'manual-sharding',
-    title: 'Distributed OLTP: The Manual Path',
+    title: 'Distributed OLTP: Hash vs Range Sharding',
     accentColor: GCP_COLORS.red,
     content: (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
@@ -291,6 +359,66 @@ ON orders(created_at DESC);`}
                 <li>• Backup/Restore consistency across shards is hard</li>
                 <li>• Complexity moves to the Developers</li>
              </ul>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    id: 'consistent-hashing',
+    title: 'Avoiding Hotspots with Consistent Hashing',
+    accentColor: GCP_COLORS.red,
+    content: (
+      <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 w-full max-w-6xl">
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+            <h3 className="mb-4 flex items-center gap-3 text-xl font-black text-[#EA4335]">
+              <AlertTriangle className="h-6 w-6" />
+              Hotspot = Too Much Traffic in One Place
+            </h3>
+            <p className="text-sm leading-7 text-slate-700">
+              Hotspots happen when writes concentrate on one shard, one key range, or one physical partition.
+              Sequential IDs, timestamps, and high-traffic tenants are classic causes.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h4 className="mb-2 text-sm font-black text-slate-800">Problem: Modulo Hashing</h4>
+              <pre className="rounded-lg bg-slate-900 p-3 text-[10px] text-green-400">
+{`shard = hash(user_id) % 10
+
+// Add one shard:
+shard = hash(user_id) % 11
+
+// Many keys move.`}
+              </pre>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h4 className="mb-2 text-sm font-black text-slate-800">Fix: Consistent Hashing</h4>
+              <p className="text-xs leading-6 text-slate-600">
+                Place shards on a logical hash ring. When a new shard is added, only a portion of the key space moves.
+                Use virtual nodes to smooth the distribution.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
+          <Globe className="mb-5 h-10 w-10 text-[#FBBC04]" />
+          <h3 className="mb-4 text-2xl font-black">Design the Key for the Traffic</h3>
+          <div className="space-y-5 text-sm leading-7 text-slate-300">
+            <p>
+              Hashing spreads rows, but the real goal is spreading load. If one tenant creates 40% of writes,
+              hashing only by <code className="rounded bg-white/10 px-1">tenant_id</code> can still create a hot shard.
+            </p>
+            <p>
+              Better options include compound keys like <code className="rounded bg-white/10 px-1">hash(tenant_id + user_id)</code>
+              or write buckets such as <code className="rounded bg-white/10 px-1">hash(user_id) + time_bucket</code>.
+            </p>
+          </div>
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs font-bold uppercase tracking-widest text-[#FBBC04]">
+            Hash design is workload design.
           </div>
         </div>
       </div>
@@ -552,7 +680,7 @@ SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
   },
   {
     id: 'qa',
-    title: 'Discussion & Deep Dive',
+    title: 'Discussion & Repository',
     accentColor: GCP_COLORS.blue,
     content: (
       <div className="flex flex-col items-center justify-center h-full text-center space-y-12">
@@ -564,6 +692,25 @@ SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
         <div className="space-y-4">
           <h2 className="text-5xl font-black text-slate-900 uppercase tracking-tighter italic">Questions?</h2>
           <p className="text-xl text-slate-500 font-medium tracking-wide">Let's discuss Slot management, Spanner split points, or Federation strategies.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl">
+          <a
+            href="https://github.com/TheMasterRoot/Distributed-OLTP-vs-OLAP-on-GCP"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#4285F4]">Repository</p>
+            <p className="mt-2 text-sm font-bold text-slate-800">Download the source and presentation material</p>
+          </a>
+          <a
+            href="/script"
+            className="rounded-2xl border border-[#D2E3FC] bg-[#E8F0FE] p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#1967D2]">Speaker Notes</p>
+            <p className="mt-2 text-sm font-bold text-slate-800">Open the full speech at /script</p>
+          </a>
         </div>
 
         <div className="pt-8 flex flex-col items-center gap-4">
