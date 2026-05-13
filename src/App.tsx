@@ -274,41 +274,53 @@ ON orders(created_at DESC);`}
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-900 text-white">
-              <th className="p-4 text-xs font-bold uppercase">Feature</th>
-              <th className="p-4 text-xs font-bold uppercase">Manual / PgPool-II</th>
-              <th className="p-4 text-xs font-bold uppercase">Vitess / Citus</th>
-              <th className="p-4 text-xs font-bold uppercase text-[#4285F4]">Cloud Spanner</th>
+              <th className="p-3 text-[10px] font-bold uppercase">Dimension</th>
+              <th className="p-3 text-[10px] font-bold uppercase">Cloud SQL HA</th>
+              <th className="p-3 text-[10px] font-bold uppercase text-[#FBBC04]">AlloyDB</th>
+              <th className="p-3 text-[10px] font-bold uppercase">Vitess / Citus</th>
+              <th className="p-3 text-[10px] font-bold uppercase text-[#4285F4]">Cloud Spanner</th>
             </tr>
           </thead>
-          <tbody className="text-[11px] divide-y divide-slate-100">
+          <tbody className="text-[10px] divide-y divide-slate-100">
             <tr>
-              <td className="p-4 font-bold bg-slate-50">Sharding Model</td>
-              <td className="p-4 text-red-600 font-bold">App Logic / Proxy</td>
-              <td className="p-4">Extension / Sidecar</td>
-              <td className="p-4 font-bold text-[#4285F4]">Native Transparent</td>
+              <td className="p-3 font-bold bg-slate-50">Sharding Model</td>
+              <td className="p-3">None (single primary)</td>
+              <td className="p-3">Storage tier auto-scale</td>
+              <td className="p-3">Extension / Sidecar</td>
+              <td className="p-3 font-bold text-[#4285F4]">Native Transparent</td>
             </tr>
             <tr>
-              <td className="p-4 font-bold bg-slate-50">Resharding</td>
-              <td className="p-4 text-red-500 font-bold">Manual / Brutal</td>
-              <td className="p-4">Semi-Automated</td>
-              <td className="p-4">Native / Invisible</td>
+              <td className="p-3 font-bold bg-slate-50">Max Sustained Writes</td>
+              <td className="p-3 text-red-600 font-bold">~3–5K TPS</td>
+              <td className="p-3 font-bold text-[#B06000]">~15–20K TPS</td>
+              <td className="p-3">~30–50K TPS</td>
+              <td className="p-3 font-bold text-[#4285F4]">~10K/node, linear</td>
             </tr>
             <tr>
-              <td className="p-4 font-bold bg-slate-50">Consistency</td>
-              <td className="p-4">Session-based</td>
-              <td className="p-4">Strong per Keyspace</td>
-              <td className="p-4">Global (Paxos + TrueTime)</td>
+              <td className="p-3 font-bold bg-slate-50">Cost Floor (regional)</td>
+              <td className="p-3">~US$ 350/mo</td>
+              <td className="p-3">~US$ 600/mo</td>
+              <td className="p-3 text-slate-500">infra + ops</td>
+              <td className="p-3">~US$ 650/mo</td>
             </tr>
             <tr>
-              <td className="p-4 font-bold bg-slate-50">Complexity</td>
-              <td className="p-4">MAX (Developer Tax)</td>
-              <td className="p-4">High (Ops Heavy)</td>
-              <td className="p-4 font-bold text-green-600">Low (API Only)</td>
+              <td className="p-3 font-bold bg-slate-50">Consistency</td>
+              <td className="p-3">Local strong</td>
+              <td className="p-3">Local strong</td>
+              <td className="p-3">Strong per keyspace</td>
+              <td className="p-3">Global (Paxos + TrueTime)</td>
+            </tr>
+            <tr>
+              <td className="p-3 font-bold bg-slate-50 text-[#4285F4]">When to choose</td>
+              <td className="p-3 text-[9.5px]">&lt;5K TPS, single region, full SQL surface</td>
+              <td className="p-3 text-[9.5px] font-bold text-[#B06000]">HTAP on Postgres, regional only</td>
+              <td className="p-3 text-[9.5px]">Already on Postgres, can't migrate keys</td>
+              <td className="p-3 text-[9.5px] font-bold text-[#4285F4]">&gt;20K TPS or multi-region writes</td>
             </tr>
           </tbody>
         </table>
-        <div className="p-4 bg-blue-50 text-blue-800 text-center text-[10px] border-t border-blue-100 font-bold italic">
-           "PgPool-II handles session load balancing, but doesn't solve the hard consistency of distributed shards."
+        <div className="p-3 bg-blue-50 text-blue-800 text-center text-[10px] border-t border-blue-100 font-bold italic">
+           "Include engineering cost in the comparison. A cheap line item with a permanent on-call rotation is not cheap."
         </div>
       </div>
     )
@@ -452,37 +464,63 @@ ON orders(created_at DESC);`}
     title: 'Cloud Spanner: Distributed Consistency',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="space-y-8 w-full max-w-none">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-xl border-t-4 border-[#4285F4] shadow-md">
+      <div className="space-y-6 w-full max-w-none">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-[#4285F4] text-white p-4 rounded-xl shadow-md">
+            <p className="text-[9px] uppercase tracking-widest opacity-80">Throughput / node</p>
+            <p className="text-2xl font-black mt-1">~10K QPS</p>
+            <p className="text-[10px] opacity-90 mt-1">~5–7K in practice, linear scale</p>
+          </div>
+          <div className="bg-[#4285F4] text-white p-4 rounded-xl shadow-md">
+            <p className="text-[9px] uppercase tracking-widest opacity-80">Storage cost</p>
+            <p className="text-2xl font-black mt-1">$0.30/GB</p>
+            <p className="text-[10px] opacity-90 mt-1">regional · $0.50 multi-region</p>
+          </div>
+          <div className="bg-[#1967D2] text-white p-4 rounded-xl shadow-md">
+            <p className="text-[9px] uppercase tracking-widest opacity-80">Cost floor</p>
+            <p className="text-2xl font-black mt-1">~$650/mo</p>
+            <p className="text-[10px] opacity-90 mt-1">1 regional node minimum</p>
+          </div>
+          <div className="bg-[#EA4335] text-white p-4 rounded-xl shadow-md">
+            <p className="text-[9px] uppercase tracking-widest opacity-80">Multi-region write p50</p>
+            <p className="text-2xl font-black mt-1">~100 ms</p>
+            <p className="text-[10px] opacity-90 mt-1">physics floor: Paxos quorum</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white p-5 rounded-xl border-t-4 border-[#EA4335] shadow-md">
             <h4 className="font-bold text-sm mb-2">Anti-Pattern: Monotonic PKs</h4>
-            <p className="text-xs text-slate-500">Incremental IDs go to a single node. You create a <strong>Hotspot</strong>.</p>
-            <div className="mt-4 p-2 bg-red-50 text-red-600 text-[10px] font-mono border border-red-100 rounded">
-              BAD: 1, 2, 3... <br />
-              GOOD: UUID or Hash
+            <p className="text-xs text-slate-500">Incremental IDs concentrate writes on the last split — one node hot, the rest idle.</p>
+            <div className="mt-3 p-2 bg-red-50 text-red-600 text-[10px] font-mono border border-red-100 rounded">
+              BAD: 1, 2, 3...<br />
+              GOOD: <code>BIT_REVERSE_POSITIVE(id)</code>, UUID, hash prefix
             </div>
           </div>
-          <div className="bg-white p-6 rounded-xl border-t-4 border-[#4285F4] shadow-md">
-            <h4 className="font-bold text-sm mb-2">Table Interleaving</h4>
-            <p className="text-xs text-slate-500">Co-locate child data with parent data physically. Zero-cost JOINS.</p>
-            <pre className="mt-4 text-[9px] bg-slate-50 p-2 rounded">
+          <div className="bg-white p-5 rounded-xl border-t-4 border-[#4285F4] shadow-md">
+            <h4 className="font-bold text-sm mb-2">Interleaving</h4>
+            <p className="text-xs text-slate-500">Co-locate child rows under parent. Joins become local. Rule: parent + children &lt; 8 GB.</p>
+            <pre className="mt-3 text-[9px] bg-slate-50 p-2 rounded">
 {`INTERLEAVE IN PARENT Customers
 ON DELETE CASCADE`}
             </pre>
           </div>
-          <div className="bg-white p-6 rounded-xl border-t-4 border-[#4285F4] shadow-md">
+          <div className="bg-white p-5 rounded-xl border-t-4 border-[#34A853] shadow-md">
             <h4 className="font-bold text-sm mb-2">Stored Columns</h4>
-            <p className="text-xs text-slate-500">Add extra columns to the index to avoid extra base table lookups.</p>
+            <p className="text-xs text-slate-500">Add covering columns to indexes to avoid base-table lookups on hot read paths.</p>
+            <div className="mt-3 p-2 bg-green-50 text-green-700 text-[10px] font-mono border border-green-100 rounded">
+              CREATE INDEX ...<br />
+              STORING (col1, col2)
+            </div>
           </div>
         </div>
 
-        <div className="bg-[#202124] p-8 rounded-2xl text-white flex gap-8 items-center">
-          <div className="w-16 h-16 shrink-0 bg-[#4285F4] rounded-full flex items-center justify-center font-black text-2xl">PK</div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold">The Secret to Spanner Scale</h3>
-            <p className="text-sm text-slate-400">
-              Spanner splits data based on PK ranges. If your PKs are evenly distributed, your throughput scales <strong>linearly</strong> with nodes. 
-              If not, you're paying for nodes and using only one.
+        <div className="bg-[#202124] p-6 rounded-2xl text-white flex gap-6 items-center">
+          <div className="w-14 h-14 shrink-0 bg-[#4285F4] rounded-full flex items-center justify-center font-black text-xl">PK</div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold">Spanner removes the sharding tax, not the modeling tax</h3>
+            <p className="text-xs text-slate-400">
+              Even key distribution = linear scale with nodes. Monotonic keys = paying for N nodes, using one.
             </p>
           </div>
         </div>
@@ -615,87 +653,133 @@ CLUSTER BY user_id, status;`}
   },
   {
     id: 'performance-tweaks',
-    title: 'Senior Tweaks: The Query Plan',
+    title: 'Senior Tweaks: Three Real Incidents',
     accentColor: GCP_COLORS.dark,
     content: (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-none">
-        <div className="space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200">
-            <h4 className="font-bold text-[#EA4335] mb-2 uppercase text-[10px]">Cloud SQL: Bloat Detect</h4>
-            <pre className="bg-slate-900 p-3 rounded font-mono text-[9px] text-green-400 overflow-x-auto">
-{`-- Find heavily updated tables with dead tuples
-SELECT relname, n_live_tup, n_dead_tup, 
-       last_autovacuum 
-FROM pg_stat_user_tables 
-ORDER BY n_dead_tup DESC LIMIT 5;`}
-            </pre>
+      <div className="space-y-5 w-full max-w-none">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-2xl border-t-4 border-[#EA4335] shadow-md flex flex-col gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#EA4335]">Case 01 · Cloud SQL</p>
+              <h4 className="font-black text-sm text-slate-800 mt-1">Silent bloat from a long transaction</h4>
+            </div>
+            <div className="text-[10.5px] leading-5 text-slate-600 space-y-2">
+              <p><strong className="text-slate-800">Symptom:</strong> 1.5 TB orders table; latency drifted 200 ms → 4 s over 6 months.</p>
+              <p><strong className="text-slate-800">Diagnosis:</strong> nightly export held a 90-min transaction, freezing the vacuum horizon. Dead tuples = 38%.</p>
+              <p><strong className="text-slate-800">Fix:</strong> moved export to a read replica; lowered <code className="bg-slate-100 px-1 rounded">autovacuum_vacuum_scale_factor</code>.</p>
+            </div>
+            <div className="mt-auto bg-red-50 border border-red-100 rounded-lg p-2 text-[10px]">
+              <span className="font-black text-red-700">Result:</span>
+              <span className="text-red-600"> 250 ms p95 · 600 GB reclaimed</span>
+            </div>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200">
-            <h4 className="font-bold text-[#4285F4] mb-2 uppercase text-[10px]">Spanner: Force Index & Interleave</h4>
-            <pre className="bg-slate-900 p-3 rounded font-mono text-[9px] text-green-400 overflow-x-auto">
-{`-- Force index and avoid full scan
-SELECT * FROM Orders@{FORCE_INDEX=OrdersByStatus}
-WHERE Status = 'ACTIVE';
 
--- Interleaved Join (Zero Network Shuffle)
-SELECT c.Name, o.OrderId 
-FROM Customers c JOIN Orders o ON c.CustomerId = o.CustomerId;`}
-            </pre>
+          <div className="bg-white p-5 rounded-2xl border-t-4 border-[#4285F4] shadow-md flex flex-col gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#4285F4]">Case 02 · Spanner</p>
+              <h4 className="font-black text-sm text-slate-800 mt-1">8 nodes paid, 1 node hot</h4>
+            </div>
+            <div className="text-[10.5px] leading-5 text-slate-600 space-y-2">
+              <p><strong className="text-slate-800">Symptom:</strong> hot-shard alert at 30K QPS, cluster average utilization at 12%.</p>
+              <p><strong className="text-slate-800">Diagnosis:</strong> primary key was a monotonic <code className="bg-slate-100 px-1 rounded">order_id</code> — every write hit the last split.</p>
+              <p><strong className="text-slate-800">Fix:</strong> composite key prefixed with <code className="bg-slate-100 px-1 rounded">BIT_REVERSE_POSITIVE(order_id)</code>.</p>
+            </div>
+            <div className="mt-auto bg-blue-50 border border-blue-100 rounded-lg p-2 text-[10px]">
+              <span className="font-black text-blue-700">Result:</span>
+              <span className="text-blue-600"> even distribution · headroom restored · zero new nodes</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border-t-4 border-[#34A853] shadow-md flex flex-col gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#34A853]">Case 03 · BigQuery</p>
+              <h4 className="font-black text-sm text-slate-800 mt-1">24x cheaper, same output</h4>
+            </div>
+            <div className="text-[10.5px] leading-5 text-slate-600 space-y-2">
+              <p><strong className="text-slate-800">Symptom:</strong> daily report scanned 4.2 TB · US$ 26/run · 3x/day.</p>
+              <p><strong className="text-slate-800">Diagnosis:</strong> <code className="bg-slate-100 px-1 rounded">SELECT *</code> with no partition filter on a partitioned-but-unclustered table.</p>
+              <p><strong className="text-slate-800">Fix:</strong> cluster on <code className="bg-slate-100 px-1 rounded">user_id</code>, partition filter required, narrowed to 8 columns.</p>
+            </div>
+            <div className="mt-auto bg-green-50 border border-green-100 rounded-lg p-2 text-[10px]">
+              <span className="font-black text-green-700">Result:</span>
+              <span className="text-green-700"> 180 GB scanned · US$ 1.10/run · 24x cheaper</span>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200">
-            <h4 className="font-bold text-[#34A853] mb-2 uppercase text-[10px]">BigQuery: Nested Fields & SEARCH</h4>
-            <pre className="bg-slate-900 p-3 rounded font-mono text-[9px] text-green-400 overflow-x-auto">
-{`-- Avoid Self-Joins with Nested Fields
-SELECT id, 
-  (SELECT price FROM UNNEST(items)) as prices
-FROM orders;
-
--- Use SEARCH for log analytics
-SELECT * FROM logs WHERE SEARCH(message, 'error 500');`}
-            </pre>
+        <div className="bg-[#202124] p-5 rounded-2xl text-white flex flex-col md:flex-row gap-4 items-start md:items-center">
+          <div className="shrink-0">
+            <p className="text-[#FBBC04] text-[10px] font-black uppercase tracking-widest">Senior Tweak Checklist</p>
+            <p className="text-base font-bold mt-1">Always look at the plan. Never trust the SQL.</p>
           </div>
-          <div className="bg-[#202124] p-6 rounded-2xl text-white">
-            <h3 className="text-lg font-bold mb-4 text-[#FBBC04]">Internal Tweak Checklist</h3>
-            <ul className="space-y-2 text-[11px] text-slate-300">
-              <li>• <strong>Cloud SQL:</strong> Tune `max_connections` vs `shared_buffers` (25% RAM rule).</li>
-              <li>• <strong>Spanner:</strong> Avoid huge transactions (&gt;100MB). They block Paxos heartbeats.</li>
-              <li>• <strong>BigQuery:</strong> Use <strong>Nested & Repeated fields</strong> (JSON) to avoid massive self-joins.</li>
-              <li>• <strong>Architecture:</strong> Always use <strong>Streaming Buffer</strong> for real-time BQ ingest.</li>
-            </ul>
-          </div>
+          <ul className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-[11px] text-slate-300">
+            <li>• <strong className="text-white">Cloud SQL:</strong> watch <code>n_dead_tup / n_live_tup</code> &gt; 20%.</li>
+            <li>• <strong className="text-white">Spanner:</strong> avoid transactions &gt; 100 MB; they block Paxos.</li>
+            <li>• <strong className="text-white">BigQuery:</strong> nested/repeated fields beat massive self-joins.</li>
+            <li>• <strong className="text-white">Architecture:</strong> Storage Write API for high-throughput ingest.</li>
+          </ul>
         </div>
       </div>
     )
   },
   {
     id: 'takeaways',
-    title: 'Architectural Commandments',
+    title: 'Architectural Commandments & Decision Tree',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="flex flex-col items-center justify-center h-full space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-none">
-          <div className="bg-[#4285F4] text-white p-8 rounded-3xl shadow-xl flex flex-col justify-center items-center text-center">
-            <div className="text-4xl font-bold mb-2">1</div>
-            <p className="font-medium">Transaction Integrity First. Use Spanner for Global, Cloud SQL for Local.</p>
-          </div>
-          <div className="bg-[#EA4335] text-white p-8 rounded-3xl shadow-xl flex flex-col justify-center items-center text-center">
-            <div className="text-4xl font-bold mb-2">2</div>
-            <p className="font-medium">Separate Compute from Storage. BigQuery is the only answer for 10TB+ scans.</p>
-          </div>
-          <div className="bg-[#34A853] text-white p-8 rounded-3xl shadow-xl flex flex-col justify-center items-center text-center">
-            <div className="text-4xl font-bold mb-2">3</div>
-            <p className="font-medium">Zero-ETL is the future. Minimize friction between OLTP and OLAP.</p>
+      <div className="flex flex-col gap-5 w-full max-w-none">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#4285F4] mb-2">Six Commandments</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              { n: '01', color: GCP_COLORS.blue, title: 'Respect the Growth Wall', text: 'One node is a great start, never a long-term strategy.' },
+              { n: '02', color: GCP_COLORS.red, title: 'Keys for Traffic, Not Rows', text: 'A bad distribution key hot-spots any system.' },
+              { n: '03', color: GCP_COLORS.yellow, title: 'Consistency Has a Price', text: 'Multi-region writes ≈ 100 ms p50. Every time.' },
+              { n: '04', color: GCP_COLORS.green, title: 'Cluster for the Bill', text: 'In BQ, layout is cost control, not just performance.' },
+              { n: '05', color: GCP_COLORS.dark, title: "Don't Use OLTP as OLAP", text: 'CDC, change streams, federation. Each system does its job.' },
+              { n: '06', color: GCP_COLORS.blue, title: 'Physics Wins', text: 'Network, disk, and coordination set the ceiling.' }
+            ].map((c) => (
+              <div key={c.n} className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex gap-3 items-start">
+                <div className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-white text-xs font-black" style={{ backgroundColor: c.color }}>{c.n}</div>
+                <div className="min-w-0">
+                  <h4 className="text-[12px] font-black text-slate-800 leading-tight">{c.title}</h4>
+                  <p className="text-[10.5px] text-slate-500 leading-snug mt-1">{c.text}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="text-center space-y-6 pt-12">
-          <h3 className="text-4xl font-bold text-slate-800 tracking-tight leading-tight max-w-4xl">
-            "If you're not analyzing your query plans daily, you're not architecting, you're just hoping."
-          </h3>
-          <p className="text-xl text-slate-400 font-light">Cloud data is about efficiency of access, not just size.</p>
+        <div className="bg-[#202124] rounded-2xl p-5 shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FBBC04]">Decision Tree</p>
+            <p className="text-[10px] text-slate-400 italic">From workload signal to GCP service</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#4285F4]">Step 1 · Spanner</p>
+              <p className="text-white text-[12px] font-bold mt-2 leading-tight">Multi-region writes <span className="text-slate-400 font-normal">or</span> &gt; 20K TPS?</p>
+              <p className="text-slate-400 text-[10.5px] mt-2">Choose <strong className="text-white">Cloud Spanner</strong> — global consistency, linear scale.</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#FBBC04]">Step 2 · AlloyDB</p>
+              <p className="text-white text-[12px] font-bold mt-2 leading-tight">PostgreSQL features + HTAP, regional only?</p>
+              <p className="text-slate-400 text-[10.5px] mt-2">Choose <strong className="text-white">AlloyDB</strong> — ~4x Cloud SQL writes, columnar engine.</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#34A853]">Step 3 · Cloud SQL</p>
+              <p className="text-white text-[12px] font-bold mt-2 leading-tight">&lt; 5K TPS, single region, mainstream SQL?</p>
+              <p className="text-slate-400 text-[10.5px] mt-2">Choose <strong className="text-white">Cloud SQL HA</strong> — simplest, ~US$ 350/mo floor.</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#EA4335]">Step 4 · BigQuery</p>
+              <p className="text-white text-[12px] font-bold mt-2 leading-tight">Analytical, &gt; 1 TB scans?</p>
+              <p className="text-slate-400 text-[10.5px] mt-2">Choose <strong className="text-white">BigQuery</strong> — Editions once &gt; 50 TB/mo.</p>
+            </div>
+          </div>
+          <p className="text-center text-[11px] text-slate-300 italic mt-4">
+            "If you're not analyzing your query plans daily, you're not architecting — you're hoping."
+          </p>
         </div>
       </div>
     )

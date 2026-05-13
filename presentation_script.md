@@ -1,261 +1,235 @@
 # Presentation Script: Cloud Data Architecture at Scale (Senior Level)
 
+> Speaker target: 28 minutes of spoken delivery (~3.000 words) + 2 minutes of buffer. 30 minutes follow-up Q&A — see `presentation_qa.md` for the prepared bank of anticipated questions.
+
 ## Slide 1: Introduction
 **Title: Deep Dive: Mastering Architectural Decisions (Expert Level)**
-"Hello everyone. Today we are going to talk about OLTP and OLAP, but not only from the basic definition point of view. Most people already know the simple distinction: OLTP is for transactions and OLAP is for analytics. The real architectural challenge starts when the system grows and those definitions are not enough anymore.
+"Hello everyone. Today we will go beyond the textbook line that OLTP is for transactions and OLAP is for analytics. Most people in this room already know that. The harder question is what happens when a system actually grows.
 
-In production, the important questions are different. What happens to latency when write volume increases? What happens to cost when analytical queries scan too much data? What happens when one database can no longer handle the operational workload? And how do we connect transactional systems to analytical systems without breaking reliability?
+In production, the questions change. What happens to write latency when transaction volume doubles? What happens to the BigQuery bill when an analyst writes one bad `SELECT *`? When does one database stop being enough, and how do you connect the transactional and analytical worlds without breaking either of them?
 
-In GCP, services like Cloud SQL, Cloud Spanner, BigQuery, and Datastream give us different answers to those questions. So the goal of this session is to understand the trade-offs behind those tools and to make better architecture decisions when scale starts to matter."
+On GCP, Cloud SQL, AlloyDB, Cloud Spanner, BigQuery, and Datastream each answer those questions differently. The goal of this session is to leave you with the numbers, the trade-offs, and a decision framework you can apply on Monday morning."
 
 ---
 
 ## Slide 2: Session Roadmap
 **Title: What We Will Cover Today**
-"Before we go deep, let me give you a quick roadmap of the session so you know where we are going.
+"Quick roadmap before we go deep.
 
-First, we will start with the OLTP layer and discuss why a traditional relational database eventually hits a growth wall. Then we will look under the hood of Cloud SQL, especially MVCC, bloat, and the Write Ahead Log, because those internal mechanisms explain many real production issues.
+We start at the OLTP layer with the growth wall — why a single relational database eventually stops scaling, even on the biggest instance. Then we open the hood of Cloud SQL: MVCC, bloat, and the Write Ahead Log, because those are the mechanics behind most real incidents.
 
-After that, we will talk about indexing and the decision point architects face when vertical scaling is no longer enough. That will lead us into distributed OLTP, manual sharding, hash sharding, range sharding, consistent hashing, and hotspot avoidance.
+From there we go into indexing, the decision fork between Cloud SQL, AlloyDB, sharded Postgres, and Spanner, then hash versus range sharding, and consistent hashing with virtual nodes. That leads us to Spanner as the managed alternative.
 
-Then we will compare this manual path with Cloud Spanner and discuss how Spanner handles distributed consistency. From there, we will move to OLAP with BigQuery, looking at the Dremel engine, slots, clustering, and query shuffle.
-
-Finally, we will connect both worlds using CDC and Zero-ETL patterns, review practical query-plan tips, and close with a set of architectural principles you can take back to your own systems."
+We then move to BigQuery: Dremel, slots, clustering, and the cost model. We connect both worlds through CDC, change streams, and continuous queries, look at three real-world micro-cases, and close with a decision tree you can take home."
 
 ---
 
 ## Slide 3: OLTP Layer: The Growth Wall
 **Title: OLTP Layer: The Growth Wall**
-"Let's start where most architectures begin: a single-node relational database. This could be Cloud SQL for PostgreSQL, Cloud SQL for MySQL, or a similar managed relational database.
+"Most systems start the same way: a single relational node. So let's start there too.
 
-At the beginning, this model works very well. It gives us transactions, indexes, joins, backups, and operational simplicity. The team can move fast because the data model is familiar and all the data is in one place.
+It works beautifully at the beginning. Cloud SQL gives you transactions, indexes, joins, backups, and operational simplicity — all in one place. Teams move fast because the data model is familiar and everything is local.
 
-The problem appears when transaction volume keeps growing. A relational database can scale vertically for a while by adding CPU, memory, and faster disks. But vertical scaling has a physical limit. At some point, the issue is not only hardware anymore. The issue becomes coordination.
+Then transactions keep growing. Vertical scaling buys you time. Cloud SQL today goes up to 128 vCPU and roughly 864 GB of RAM on Enterprise Plus. That is a lot of headroom, but it is not infinite. And the wall is usually not CPU.
 
-**The Mechanism:** As write volume grows, the database spends more time coordinating locks, transactions, indexes, and row versions. In PostgreSQL, this is closely related to **MVCC**, which means **Multi-Version Concurrency Control**. Every update creates a new row version instead of simply overwriting the old one.
+**The mechanism.** In PostgreSQL, every `UPDATE` creates a new row version because of MVCC — Multi-Version Concurrency Control. Great for concurrency, costly under pressure. If your write rate outpaces autovacuum's ability to clean dead tuples, you accumulate bloat, locks contend, and adding CPU stops helping. In practice, Cloud SQL starts to hit that wall somewhere between three and five thousand sustained write TPS on a heavy instance — earlier if your workload is contentious.
 
-That design is great for concurrency, but it has a cost. If your write rate is higher than the database's ability to clean old row versions, you start accumulating dead tuples and table bloat. When that happens, adding more CPU does not necessarily fix the problem. In highly contentious workloads, adding more capacity can even expose more lock contention and coordination overhead.
-
-This is what I call the growth wall: the point where the bottleneck is no longer just disk, memory, or CPU. The bottleneck is the fact that one database node is trying to coordinate too much transactional work."
+**The fork.** This is the growth wall: the bottleneck stops being hardware and becomes coordination. The interesting thing is that you have one stop before Spanner — AlloyDB. Same PostgreSQL API, a redesigned storage engine, and roughly four times the write throughput of Cloud SQL. We will come back to that decision in a few slides."
 
 ---
 
 ## Slide 4: Cloud SQL Deep Dive: MVCC, Bloat, and WAL
 **Title: Cloud SQL: MVCC & The WAL**
-"Now let's look a little deeper at Cloud SQL for PostgreSQL, because it is a very common OLTP starting point.
+"Coordination overhead is the headline problem. But there is a quieter one happening inside the engine itself.
 
-When engineers see slow queries, they often blame the disk or assume the instance is too small. Sometimes that is true, but many times the root cause is inside the database engine itself. Two important concepts here are MVCC bloat and the WAL.
+When a Cloud SQL instance feels slow, the first reflex is to blame disk or instance size. Sometimes that is true. Often the real cause is two mechanisms inside PostgreSQL itself.
 
-**MVCC and Bloat:** In PostgreSQL, an `UPDATE` does not simply replace a row in place. PostgreSQL keeps the old row version and creates a new version. This allows readers and writers to work concurrently without blocking each other all the time.
+**MVCC and bloat.** An `UPDATE` never replaces the row in place. PostgreSQL keeps the old version and writes a new one. `autovacuum` is what cleans up — but only versions invisible to active transactions. If one long-running export, report, or analytical query holds a transaction open, the visibility horizon freezes and autovacuum cannot reclaim anything during that window.
 
-The cleanup is handled by `autovacuum`. But `autovacuum` can only remove row versions that are no longer visible to active transactions. If someone runs a long report, export, or analytical query against the OLTP database, that transaction can keep the visibility horizon open for a long time. During that period, old row versions cannot be cleaned.
+The signal worth watching is `n_dead_tup` over `n_live_tup` in `pg_stat_user_tables`. Anything above twenty percent on a high-churn table means you are already losing query performance to bloat. If `last_autovacuum` is older than twenty-four hours on the same table, you are not losing — you are bleeding.
 
-The result is table bloat. A table that logically has 100 GB of active data might physically grow much larger because it contains dead space. This affects scans, indexes, cache efficiency, and backup size.
+**The WAL.** Before any change touches the table, PostgreSQL writes it to the Write Ahead Log. The WAL is what makes durability and crash recovery possible. Every commit is a flush. On SSD, each `fsync` is roughly one to three milliseconds. At five thousand commits per second, you are saturating fsync, not CPU. That is why batching small writes is one of the simplest wins in any OLTP workload — same data volume, fewer flushes.
 
-**The WAL:** Before data is safely persisted to the table, PostgreSQL writes the change to the **Write Ahead Log**. The WAL is essential for durability and crash recovery. Every committed transaction must be represented there.
-
-If the workload generates many small commits, the database may spend a lot of time flushing WAL records. This is why batching small writes can improve throughput. The data volume may be the same, but the number of commit flushes is lower.
-
-The practical takeaway is this: Cloud SQL performance is not only about instance size. You also need to understand transaction behavior, long-running queries, vacuum health, and WAL pressure."
+The takeaway is straightforward. Cloud SQL performance is not a function of instance size alone. It is a function of transaction discipline, vacuum health, and WAL pressure."
 
 ---
 
 ## Slide 5: Advanced Indexing: Ordered vs Partial
 **Title: Advanced Indexing: Beyond B-Trees**
-"Once the OLTP database grows, indexes become one of the most important design tools. But indexes are not free. Every index consumes disk, memory, and write capacity.
+"If MVCC and the WAL are the engine's heartbeat, indexes are the steering wheel. And like a steering wheel, more of them is not better.
 
-I often see systems with too many generic indexes. They help some reads, but they slow down writes and waste memory. Two useful techniques for more precise indexing are partial indexes and ordered indexes.
+Indexes feel free. They are not. Every index consumes storage, memory, and write IO — and write IO is exactly what an OLTP system has least of.
 
-**Partial Indexes:** Imagine a table with 500 million orders, but the application dashboard only needs to query active orders. If only a small percentage of the table is active, indexing the full table is wasteful.
+I often see tables with eight, ten, twelve indexes, most of them adding nothing because the planner already had a better path. Two techniques cut that fat: partial indexes and ordered indexes.
 
-In PostgreSQL, you can create an index like `CREATE INDEX ... WHERE status = 'ACTIVE'`. This means the index only contains rows that match that condition. It is smaller, it fits in memory more easily, and it reduces write overhead for rows that do not match the condition.
+**Partial indexes.** Imagine an orders table with five hundred million rows, but the application dashboards only ever query active orders, which are maybe two percent of the table. Indexing the whole column is waste. In PostgreSQL, `CREATE INDEX ... WHERE status = 'ACTIVE'` builds an index over just those rows. Smaller index, fits in cache, lower write overhead on every insert that does not match.
 
-**Ordered Indexes:** Ordered indexes are useful when the query needs results in a specific order. For example, many applications ask for the latest records using `ORDER BY created_at DESC`.
+**Ordered indexes.** A surprising amount of latency in OLTP comes from sorts. If your query says `ORDER BY created_at DESC` and the index is plain `(created_at)`, the planner may still scan backwards or sort. If the sort spills out of `work_mem`, it becomes an external sort on disk — and that is where milliseconds turn into seconds.
 
-If the index matches the query order, the database can read the next rows directly from the index. If it does not, the database may need to sort the result. When a sort is too large for memory, it can spill to disk, creating an external sort. External sorts are expensive and can become a hidden source of latency.
-
-The senior-level point here is that indexes should match access patterns. Do not only ask, 'Do I have an index on this column?' Ask, 'Does this index match the filter, order, and selectivity of my real query?'"
+The senior question is not 'do I have an index on this column.' It is 'does this index match the filter, the order, and the selectivity of the query that actually runs?'"
 
 ---
 
 ## Slide 6: Decision Fork: How to Scale?
 **Title: Decision Fork: How to Scale?**
-"After optimization, better indexing, batching, and tuning, you may still reach a point where a single OLTP database is not enough. At this point, architects face a decision fork.
+"Even with perfect indexes and a healthy vacuum, you can still outgrow one node. That is where the architecture decision shows up. Four real options on GCP today.
 
-The common options are manual sharding, distributed database extensions or proxies like Citus and Vitess, or a fully distributed database like Cloud Spanner.
+**Cloud SQL HA, plus tuning.** Single primary with synchronous replica. Practical ceiling around three to five thousand sustained write TPS. Cost floor is roughly three hundred and fifty US dollars per month for a small HA pair. Choose this when you are under that TPS budget, you live in one region, and you want full PostgreSQL or MySQL surface area.
 
-**Manual Sharding:** With manual sharding, the application or an internal routing layer decides where each record lives. This gives you control, but it moves a lot of complexity into your own code and operations. Your team now owns routing, rebalancing, cross-shard queries, and cross-shard transactions.
+**AlloyDB.** PostgreSQL-compatible, but the storage layer is rewritten — separated storage and compute, with a columnar engine for analytical queries on the same data. In practice, it delivers roughly four times the write throughput of Cloud SQL on the same SQL surface, reaches fifteen to twenty thousand TPS without sharding, and runs regionally. Cost floor around six hundred US dollars per month with the minimum node count. Choose this when you want HTAP on a PostgreSQL workload and you can stay regional.
 
-**Citus and Vitess:** These tools provide a middle ground. They help distribute data while preserving some familiar relational patterns. They can be powerful, but you still need to understand how data is distributed and what types of queries are efficient.
+**Vitess or Citus.** Sharding extensions on top of MySQL or PostgreSQL. They take you further — thirty to fifty thousand TPS is achievable — but you still own the operational complexity: shard maps, rebalancing, cross-shard transactions. Cost is mostly engineering.
 
-**Cloud Spanner:** Spanner is the managed distributed database option. It gives you automatic sharding, strong consistency, high availability, and horizontal scale. The trade-off is that you must design for Spanner's model, especially around primary keys, interleaving, and transaction boundaries.
+**Cloud Spanner.** Native distributed database. Roughly ten thousand QPS per node, scales linearly, strong external consistency, multi-region writes if you need them. Cost floor around six hundred and fifty US dollars per month for one regional node. Choose this above twenty thousand TPS, or when multi-region writes are a real requirement, or when you cannot tolerate manual resharding.
 
-**Senior Tip:** When comparing options, include engineering cost. Manual sharding may look cheaper on the cloud bill, but if it requires multiple engineers or DBAs to maintain routing, rebalancing, and incident response, the total cost can be much higher than it appears."
+A blunt rule: include engineering cost in the comparison. A cheap line item with a permanent on-call rotation behind it is not cheap."
 
 ---
 
 ## Slide 7: Distributed OLTP: Hash vs Range Sharding
 **Title: Distributed OLTP: Hash vs Range Sharding**
-"If you choose the manual path, one of the first decisions is how to split the data. The two common strategies are hash sharding and range sharding.
+"If you do take the manual sharding path, even briefly, you face one decision before everything else: how to split the data. Two strategies dominate — hash and range.
 
-**Hash Sharding:** Hash sharding uses a function to convert a key into a shard number. A simple example is `hash(user_id) % N`, where `N` is the number of shards. If you have 10 shards, the hash result decides which of those 10 shards stores the user's data.
+**Hash sharding.** A hash function turns a key into a shard number, typically something like `hash(user_id) mod N`. With ten shards, every user lands on one of ten nodes independent of when they signed up. The benefit is even distribution. If user IDs are 101, 102, and 103, hashing scatters them across the cluster instead of piling recent IDs on the same node.
 
-The main benefit is distribution. If the hash function is good and the key has enough variety, users are spread across shards relatively evenly. This helps avoid a situation where all writes go to the same database node.
+**Range sharding.** Data is split by ordered intervals. Users one to one million on shard A, one to two million on shard B, and so on. Or by date: January on one shard, February on another. Range sharding is what you want for range queries — give me all orders from March is easy and local. The cost is hotspots. If today's orders all land on today's shard, that shard absorbs most of the write traffic while the rest sit idle.
 
-For example, if user IDs are `101`, `102`, and `103`, the application does not store them by numerical order. It hashes each ID and sends each user to the shard produced by the hash. This usually spreads writes better than simply putting recent IDs on the same shard.
-
-**Range Sharding:** Range sharding splits data by ordered intervals. For example, users with IDs from 1 to 1 million go to shard A, users from 1 million to 2 million go to shard B, and so on. Another common example is date-based sharding, where January data goes to one shard and February data goes to another.
-
-Range sharding is useful for range queries. If I need all orders from March, it is easy to know which shard or shards to query. But it can create hotspots. If most new orders arrive today, and today's range is on one shard, that shard receives most of the write traffic.
-
-So the trade-off is simple: hash sharding is usually better for even write distribution, while range sharding is usually better for ordered access and range scans. The right choice depends on the workload."
+The trade-off is simple. Hash sharding is better for write distribution. Range sharding is better for ordered access and large scans. The workload picks the answer; there is no general best."
 
 ---
 
 ## Slide 8: Avoiding Hotspots with Consistent Hashing
 **Title: Avoiding Hotspots with Consistent Hashing**
-"Now let's talk about hotspots and consistent hashing, because this is where manual sharding becomes difficult. This slide shows the mental model I want you to remember: the hash ring.
+"Hash sharding sounds clean until you need to add one shard. That is when consistent hashing earns its keep. This slide is the one I want you to remember — the hash ring.
 
-A **hotspot** happens when too much traffic goes to the same shard, node, key range, or physical partition. This can happen with sequential IDs, timestamps, tenant IDs, or any key where the traffic is not evenly distributed.
+A hotspot is when too much traffic goes to one shard, one key range, or one physical partition. Sequential IDs, timestamps, noisy tenants — all classic causes. Simple modulo hashing makes this worse during resharding: change `N` from ten to eleven and the modulo result changes for almost every key. That is the resharding tax — most of your dataset moves at once.
 
-With simple hash sharding, a common implementation is `hash(user_id) % N`. The problem is that `N` is the number of shards. If you change from 10 shards to 11 shards, the modulo result changes for many keys. That means a large percentage of your data suddenly belongs on a different shard. This is the resharding tax.
+**Consistent hashing.** Both keys and nodes live on the same logical ring. Imagine a number line bent into a circle. To place a key, you hash it onto a position, then walk clockwise until you find the next node. That node owns the key. If a node fails, the affected keys continue clockwise to the next healthy node. The crucial property: only the ranges next to the changed node move. The rest of the ring stays still.
 
-**Consistent Hashing:** Consistent hashing reduces this problem by placing both data keys and nodes on the same logical ring. Think of the ring as a number line that wraps around on itself. In the diagram, the nodes are placed around the circle, and each request is also mapped to a position on that same circle.
+**Virtual nodes.** In practice we do not place a physical node on the ring once. Each node appears many times — Node A as A1, A2, A3, and so on. Without that, one node could randomly own a huge arc of the ring; with many virtual nodes, ownership is sliced into smaller, more uniform intervals. Adding capacity touches only the slices owned by the new node. Removing a node only redistributes its own slices.
 
-To decide where the data goes, we start at the request position and move clockwise until we find the next healthy node. That next node owns the key. If one node fails, the affected requests continue clockwise to the next healthy node. The important point is that only the ranges near the failed or added node are reassigned. The whole dataset does not need to move.
+This is why consistent hashing shows up in distributed caches, key-value stores, and any system that needs to rebalance without freezing.
 
-**Virtual Nodes:** In real systems, we usually do not place each physical node on the ring only once. Instead, each physical node appears multiple times as virtual nodes. So Node 0 may appear as `Node0-v1`, `Node0-v2`, and `Node0-v3`; Node 2 may appear as `Node2-v1`, `Node2-v2`, and `Node2-v3`; and so on.
+One warning, and it is the senior point. Consistent hashing fixes distribution mechanics, not key design. If one tenant generates forty percent of all writes, hashing only by `tenant_id` still concentrates load. The fix is a compound key — `hash(tenant_id + user_id)` — or a write-bucketed key like `hash(user_id + time_bucket)` to spread bursty writers across the ring.
 
-Virtual nodes make the distribution smoother. If each physical node appears only once, one node might accidentally own a very large part of the ring. With many virtual nodes, ownership is spread across many smaller intervals, so the traffic is more balanced.
-
-This also helps with adding or removing capacity. If Node D is added to the ring, only the keys in the intervals now owned by Node D need to move. The rest of the ring stays stable. If Node B fails, only the ranges owned by `B1`, `B2`, and `B3` need to move to their next clockwise neighbors.
-
-This is why consistent hashing is common in distributed caches, key-value stores, and systems that need to rebalance data without moving everything.
-
-But there is one important warning: consistent hashing helps with distribution mechanics, but it does not magically solve bad key design. If one tenant is responsible for 40 percent of all writes, hashing only by `tenant_id` may still create a hot shard. In that case, you may need a compound key such as `hash(tenant_id + user_id)` or a write bucketing strategy such as `hash(user_id) + time_bucket`.
-
-The key lesson is that hash design is workload design. You need to choose a distribution key that spreads the actual traffic, not just the number of rows."
+Hash design is workload design. You are not hashing rows. You are hashing traffic."
 
 ---
 
 ## Slide 9: Cloud Spanner: Distributed Consistency
 **Title: Cloud Spanner: Distributed Consistency**
-"Cloud Spanner exists because many teams do not want to build all of that manual sharding logic themselves.
+"Consistent hashing is elegant on a whiteboard. But who wants to maintain that ring at three in the morning during an incident? Cloud Spanner exists exactly because someone said no.
 
-Spanner automatically splits data into ranges called splits and distributes those splits across nodes. It gives you horizontal scale, strong consistency, and high availability without asking the application to manually route every record to a shard.
+Spanner gives you horizontal scale, strong consistency, and global availability without owning the ring yourself. It splits data into ranges called splits, distributes them across nodes, and rebalances automatically.
 
-However, Spanner is not magic. The schema design still matters a lot.
+Some practical numbers. A Spanner node handles roughly ten thousand queries per second in theory; in practice you should size around five to seven thousand for realistic transactional workloads. Storage costs around thirty cents per gigabyte per month in regional, fifty cents in multi-region. A single regional node starts at about six hundred and fifty US dollars per month — that is the floor for the smallest Spanner deployment.
 
-**The Primary Key Pitfall:** Spanner stores rows ordered by primary key. If your primary key is sequential, such as an increasing timestamp or an auto-incrementing ID, new writes may concentrate at the end of the key range. That creates a hotspot because one split receives most of the new writes.
+Spanner is not magic. Schema decisions still drive everything.
 
-To avoid that, you can use strategies like `BIT_REVERSE_POSITIVE`, UUIDs, hash-prefixed keys, or other key designs that spread writes more evenly. The goal is to avoid sending every new transaction to the same physical area of the database.
+**The primary key pitfall.** Spanner stores rows ordered by primary key. A monotonic key — an auto-incrementing ID or a timestamp — concentrates new writes on the last split. That split becomes a hotspot, and adding nodes does not help because there is nowhere else for the writes to go. The fix is to break monotonicity: `BIT_REVERSE_POSITIVE`, UUIDs, or hash-prefixed composite keys.
 
-**Interleaving and Locality:** Spanner also supports interleaving related tables. For example, if `Orders` are interleaved under `Customers`, rows for the same customer can be stored close together. This can make customer-order joins more local and efficient.
+**Interleaving.** Spanner lets you physically co-locate child rows under their parent. Orders interleaved under Customers means a customer and all their orders live on the same split. Joins become local instead of distributed. The rule to remember: a parent plus all its interleaved children should stay under eight gigabytes, otherwise the locality benefit collapses.
 
-The important distinction is this: Spanner removes a large part of the operational burden of manual sharding, but it does not remove the need for thoughtful data modeling. You still need to design keys and relationships with distribution and locality in mind."
+**Multi-region.** Multi-region Spanner replicates across continents using Paxos. That is the source of its resilience, and it is also where physics shows up — write latency floors around one hundred milliseconds at the median, simply because light has to cross oceans.
+
+Spanner removes the operational tax of sharding. It does not remove the modeling tax."
 
 ---
 
 ## Slide 10: BigQuery: The Dremel Engine Architecture
 **Title: BigQuery: The Dremel Engine Architecture**
-"Now let's move from OLTP to OLAP and talk about BigQuery.
+"OLTP done. Now we cross the river to analytics, where the physics flips completely. BigQuery is built for the opposite problem — scanning, aggregating, and joining at scale. Its architecture separates storage from compute completely.
 
-BigQuery is designed for analytical workloads. That means it is optimized for scanning, aggregating, filtering, and joining large volumes of data. Its architecture separates storage from compute.
+**Storage.** Data lives in Colossus, Google's distributed file system, in a columnar format called Capacitor. Columnar is what makes analytics cheap: a query that touches three columns out of a hundred reads only those three columns. Capacitor adds compression, encoding, and per-block metadata so the engine can skip blocks that cannot possibly match a filter.
 
-**Storage:** BigQuery stores data in Colossus, Google's distributed storage system. The data is stored in a columnar format called Capacitor. Columnar storage is powerful for analytics because a query usually does not need every column. If the query only reads three columns from a table with one hundred columns, BigQuery can avoid reading unnecessary data.
+**Clustering and partitioning.** Partitioning slices a table by a column like `event_date`. Clustering sorts data inside each partition by columns you choose, like `customer_id` or `country`. Together they decide how much data BigQuery has to read. A clustered, partitioned, well-filtered query may scan one percent of what a naïve query would.
 
-**Capacitor Storage:** Capacitor uses compression, encoding, and metadata to reduce the amount of data scanned. When filters are applied, BigQuery can use metadata to skip blocks that cannot contain matching values. This is where clustering becomes important.
+**Slots.** Compute is measured in slots — units of execution capacity inside the Dremel tree. There are two pricing models, and the choice matters more than people think. On-demand bills you for what you scan — about six US dollars and twenty-five cents per terabyte in us-central1. Editions bill you for slot capacity over time — Standard around four cents per slot-hour with autoscaling, Enterprise around six. The breakeven is roughly fifty terabytes scanned per month: above that, Editions almost always wins. Below that, on-demand is simpler and cheaper.
 
-**Clustering:** Clustering organizes data around selected columns. If a table is clustered by `customer_id` or `event_date`, BigQuery can often skip more data when queries filter by those columns. This reduces latency and cost.
+**BI Engine.** For sub-second dashboards, BI Engine caches hot data in memory. Around thirty US dollars per gigabyte per month gets you interactive latency on cached aggregations.
 
-**The Slot Model:** Compute is handled by slots. A slot is a unit of BigQuery compute capacity. If a query is slow, the problem may not only be the amount of data scanned. It may also be shuffle, which is the movement of data between workers. Large joins and aggregations can create expensive shuffle stages.
-
-The practical takeaway is that BigQuery performance depends on data layout, query shape, and how much data moves between workers."
+The practical truth: BigQuery cost is not driven by data volume, it is driven by query shape. Two queries on the same table can differ by a factor of fifty."
 
 ---
 
 ## Slide 11: Under the Hood: How it Actually Works
-**Title: Under the Hood: How it Actually Works**
-"Let's connect the internals of Spanner and BigQuery, because both systems solve distributed problems, but they solve different types of distributed problems.
+**Title: Two Physics: OLTP vs OLAP Primitives**
+"Two systems, two completely different physics. Let's name them side by side.
 
-**TrueTime:** Spanner needs to answer a very hard OLTP question: in a globally distributed system, how do we know the correct order of transactions? Spanner uses TrueTime, which relies on tightly controlled clock uncertainty. This allows Spanner to provide external consistency, meaning the commit order matches real-world time order within the guarantees of the system.
+Spanner and BigQuery both solve distributed problems, but their design goals are opposite, and that contrast is worth one slide.
 
-This matters because transactional systems care deeply about correctness. If two users update the same account, or if an order and payment happen together, the system must know what happened first and commit consistently.
+Spanner coordinates writes. **TrueTime** — synchronized clocks with bounded uncertainty — gives Spanner external consistency, meaning the order in which transactions commit matches the order in which they happened in the real world. **Paxos** replication is what makes that order survive failures. The cost of all that coordination is latency, especially across regions.
 
-**Paxos Replication:** Spanner also uses Paxos replication. Each split is replicated, and writes require a quorum. This is why multi-region Spanner can survive failures, but it also explains why write latency can be higher in multi-region configurations. The data must coordinate across replicas.
+BigQuery coordinates reads. The **Dremel tree** breaks a query into stages, fans out to leaf workers reading Capacitor, and aggregates back through mixers. There is no global transaction to commit. The cost is **shuffle** — moving intermediate results between workers — and shuffle is what punishes unclustered joins.
 
-**Dremel Tree:** BigQuery solves a different problem. It does not need to commit small transactions with global consistency. It needs to execute large analytical queries quickly. Dremel breaks a query into a tree of execution stages. Workers scan, aggregate, shuffle, and combine results.
-
-If the data is well-partitioned and well-clustered, BigQuery can reduce unnecessary reads and shuffle. If the query joins huge unclustered datasets, BigQuery may need to move a lot of data between workers. That movement is where cost and latency can increase dramatically.
-
-So Spanner is optimized for consistent distributed transactions. BigQuery is optimized for distributed analytical execution. They are both distributed systems, but their design goals are very different."
+One sentence to take home: OLTP coordinates writes, OLAP coordinates reads, and the systems are shaped by that single difference."
 
 ---
 
 ## Slide 12: The Glue: CDC & Zero-ETL
 **Title: The Glue: CDC & Zero-ETL**
-"Most real architectures need both OLTP and OLAP. The transactional system powers the application, while the analytical system powers reporting, dashboards, machine learning, and business decisions.
+"Two physics, one business. The transactional system runs the app; the analytical system runs the decisions. We need them to talk without one killing the other.
 
-The difficult part is moving data from OLTP to OLAP reliably.
+The classic anti-pattern is a cron job: every five minutes, query the OLTP database for rows updated since the last run. It looks innocent and breaks in three ways — it misses deletes, it duplicates on clock drift, and it loads production with scans during peak hours.
 
-One anti-pattern is using cron jobs with timestamp filters. For example, running a query every five minutes that says, 'Give me all rows updated after the last run.' This looks simple, but it can miss deletes, duplicate updates, fail during clock issues, and put extra load on the production database.
+There are four real patterns, and they map onto a freshness ladder.
 
-**Log-based CDC:** A better approach is Change Data Capture. On GCP, Datastream can read from database logs like the WAL in PostgreSQL or the Binlog in MySQL. Instead of repeatedly querying the tables, it reads the stream of changes produced by the database engine.
+**Federated query.** BigQuery `EXTERNAL_QUERY` reads directly from Spanner or Cloud SQL at query time. Freshness is instant; the cost is that you can drown the source if you forget to push filters down. Always filter on the source side.
 
-This approach captures inserts, updates, and deletes. It is also out-of-band, meaning it has much less impact on the transactional workload than running heavy analytical queries directly against the OLTP database.
+**Continuous queries in BigQuery.** Streaming SQL inside BigQuery itself, reading from Pub/Sub or another streaming source. Sub-second to a few seconds end-to-end. Use it for aggregations and routing that do not need Dataflow.
 
-**Zero-ETL and Federated Queries:** In some cases, you can use BigQuery federated queries through `EXTERNAL_QUERY` to query systems like Spanner directly. This can be useful for operational analytics or lightweight reporting.
+**Change Data Capture.** Datastream reads PostgreSQL WAL or MySQL binlog and writes into BigQuery. End-to-end latency is roughly ten to thirty seconds at the median, minutes at the tail under load. Spanner has its own equivalent — change streams — captured by Dataflow templates into BigQuery. CDC is the workhorse for most reliable warehouse ingestion.
 
-But there is an important rule: push filters down. If BigQuery asks Spanner for a huge dataset and filters later, you are moving too much data. The query should be written so Spanner can filter early and return only what BigQuery really needs.
+**Scheduled batch.** Still appropriate when freshness is measured in hours and cost dominates. Use it only when the honest answer to 'how fresh' is 'tomorrow morning is fine.'
 
-The architecture goal is to keep OLTP fast and reliable, while making OLAP data fresh and useful."
+The architecture goal is not to pick one. It is to pick the right pattern per table, based on how fresh that table actually needs to be."
 
 ---
 
 ## Slide 13: Senior Tweaks: The Query Plan
-**Title: Senior Tweaks: The Query Plan**
-"At senior level, you cannot treat the database as a black box. You need to look at query plans.
+**Title: Senior Tweaks: Three Real Incidents**
+"Enough theory. Let me show you three real incidents, one per engine, that tell you what these systems look like when they break. Each one is one minute.
 
-**Cloud SQL Bloat:** In PostgreSQL, look for dead tuples, table bloat, slow vacuum, and indexes that are larger than expected. If vacuum is not keeping up, your database is carrying dead data. That affects performance even if the application code has not changed.
+**Cloud SQL.** An e-commerce orders table — about one and a half terabytes. Over six months, queries that used to return in two hundred milliseconds were taking four seconds. Diagnosis: a nightly export job held a transaction open for ninety minutes every night, which froze the autovacuum horizon. The table was thirty-eight percent dead tuples. Fix: move the export to a read replica and lower the autovacuum trigger threshold. Result: latency back to two hundred and fifty milliseconds at p95, and six hundred gigabytes reclaimed after a full vacuum.
 
-You should also look at whether queries are using indexes correctly, whether sorts are spilling to disk, and whether transactions are staying open too long.
+**Spanner.** Hot-shard alert at thirty thousand QPS, but only one of eight nodes was hot — the cluster as a whole was at twelve percent average utilization. Diagnosis: primary key was a monotonic order ID, so every new write landed on the same split. Fix: composite key with `BIT_REVERSE_POSITIVE(order_id)` as the prefix. Result: distribution evened out, the other seven nodes finally did work, and the team got their write headroom back without adding a single node.
 
-**Spanner Execution:** In Spanner, look for distributed execution patterns. If a query shows distributed cross-apply or too much remote work, it may mean the schema or query is forcing Spanner to jump across splits repeatedly.
+**BigQuery.** A daily report scanned four point two terabytes and cost about twenty-six US dollars per run, three times a day. Diagnosis: `SELECT *` with no partition filter on a partitioned-but-unclustered table. Fix: cluster on `user_id`, partition filter required, projection narrowed to the eight columns the report actually used. Result: one hundred and eighty gigabytes scanned per run, one dollar and ten cents per run — twenty-four times cheaper, same business output.
 
-That is often a sign that related data is not colocated, the primary key is not aligned with the access pattern, or the query is doing too much cross-partition work.
-
-**BigQuery Nested Fields:** In BigQuery, joins can be expensive because they often require shuffle. One technique is to use nested fields with `STRUCT` and `ARRAY`. This can keep related data together and turn some joins into local unnesting operations.
-
-The general principle is to inspect the physical plan, not just the SQL text. The SQL may look simple, but the execution plan tells you what the system actually has to do."
+Three different engines, three different failure modes, the same lesson: always look at the plan, never trust the SQL."
 
 ---
 
 ## Slide 14: Architectural Commandments
-**Title: Architectural Commandments**
-"Let's wrap the technical part with a few architectural commandments.
+**Title: Architectural Commandments & Decision Tree**
+"The plan is the truth. The SQL is the marketing. Let's close with the rules that come out of all of this — six commandments and one decision tree.
 
-1. **Respect the Growth Wall:** A single relational database is a great starting point, but it is not an infinite scaling strategy. Plan early for the moment when coordination becomes the bottleneck.
+**One. Respect the growth wall.** A single relational node is a great start and a terrible long-term strategy. Plan for the day coordination becomes the bottleneck.
 
-2. **Choose Distribution Keys Carefully:** Hashing, range sharding, and Spanner primary keys are all about distribution. A bad key can create hotspots even in a powerful distributed system.
+**Two. Choose distribution keys for traffic, not rows.** Hash, range, or Spanner primary keys — a bad key creates hotspots inside any distributed system.
 
-3. **Understand Consistency Costs:** Strong consistency across regions is valuable, but it has latency implications. TrueTime and Paxos are powerful, but physics still applies.
+**Three. Consistency has a price tag.** TrueTime and Paxos are real and beautiful, but multi-region writes cost about one hundred milliseconds at the median, every time.
 
-4. **Cluster for the Bill:** In BigQuery, clustering and partitioning are not only performance features. They are cost-control features because they reduce the amount of data scanned and shuffled.
+**Four. Cluster for the bill.** In BigQuery, clustering and partitioning are cost controls, not just performance features.
 
-5. **Do Not Use OLTP as OLAP:** Avoid running heavy analytics directly on the transactional system. Use CDC, replication, BigQuery, or federation carefully so each system does the job it was designed for.
+**Five. Do not use OLTP as OLAP.** Pull data out through CDC, change streams, or federation. Each system should keep its day job.
 
-6. **Physics Wins:** Data locality, network latency, disk behavior, and coordination overhead are the ultimate constraints. Good architecture works with those constraints instead of pretending they do not exist."
+**Six. Physics wins.** Network, disk, and coordination are the real constraints. Good architecture works with them.
+
+And the decision tree that compresses all of this:
+
+If you need multi-region writes or more than twenty thousand TPS — **Cloud Spanner**. If you want PostgreSQL features with analytical workloads on the same data, and you live in one region — **AlloyDB**. If you are under five thousand TPS, single region, with mainstream SQL needs — **Cloud SQL HA**. For analytics above one terabyte scanned — **BigQuery**, with Editions once you cross fifty terabytes per month."
 
 ---
 
 ## Slide 15: Discussion, Deep Dive, and Repository
 **Title: Discussion & Repository**
-"We have covered a lot today: OLTP growth limits, Cloud SQL internals, indexing, manual sharding, hash and range distribution, consistent hashing, Spanner, BigQuery, CDC, and practical query-plan analysis.
+"We covered the OLTP growth wall, Cloud SQL internals, indexing, the four-way fork with AlloyDB, sharding, consistent hashing, Spanner, BigQuery, CDC, three real incidents, and a decision tree.
 
-The main message is that architecture at scale is not only about choosing a product. It is about understanding the behavior of the system under load. The database choice, the key design, the query shape, and the data movement pattern all matter.
+The message is one sentence: architecture at scale is not picking a product, it is understanding behavior under load. Keys, plans, freshness, and cost are the four levers.
 
-Now I would like to open the discussion. If you have seen production issues with hot shards, slow queries, BigQuery shuffle, Spanner key design, or CDC pipelines, this is a good time to discuss them.
+Now I would like to open it up. If you have seen hotspots, bloat, BigQuery cost spikes, Spanner key issues, or CDC pain in your own systems, this is the time.
 
-You can also download the repository and review the material here:
+The repository, the slides, and the full speaker notes are linked below. A Q&A bank with prepared answers to the most common questions is available at `presentation_qa.md` for after the talk.
 
 https://github.com/TheMasterRoot/Distributed-OLTP-vs-OLAP-on-GCP"
