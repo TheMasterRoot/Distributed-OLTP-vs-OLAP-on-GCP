@@ -1,7 +1,4 @@
 # Q&A Bank — Cloud Data Architecture at Scale
-
-> Prepared answers for the 30-minute discussion that follows the talk. Each answer is intentionally concise (~100–130 words) so the speaker can deliver it without notes. Grouped into four buckets: Cost & Sizing, Migration & Operations, Architecture & Modeling, Edge Cases.
-
 ---
 
 ## Cost & Sizing

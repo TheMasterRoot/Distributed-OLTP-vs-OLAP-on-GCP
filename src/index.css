@@ -11,13 +11,105 @@
   }
 }
 
-@layer utilities {
-  @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+@layer components {
+  .markdown-content {
+    @apply text-[15px] leading-7 text-[#3C4043];
   }
 
-  .animate-spin-slow {
-    animation: spin-slow 12s linear infinite;
+  .markdown-content > *:first-child {
+    @apply mt-0;
+  }
+
+  .markdown-content > *:last-child {
+    @apply mb-0;
+  }
+
+  .markdown-content h1 {
+    @apply mt-0 mb-6 text-3xl font-black tracking-tight text-[#202124];
+  }
+
+  .markdown-content h2 {
+    @apply mt-10 mb-4 border-b border-slate-200 pb-2 text-xl font-black text-[#202124];
+  }
+
+  .markdown-content h3 {
+    @apply mt-8 mb-3 text-base font-bold text-[#1967D2];
+  }
+
+  .markdown-content h4 {
+    @apply mt-6 mb-2 text-sm font-bold text-[#5F6368] uppercase tracking-wide;
+  }
+
+  .markdown-content p {
+    @apply my-4;
+  }
+
+  .markdown-content strong {
+    @apply font-bold text-[#202124];
+  }
+
+  .markdown-content em {
+    @apply italic text-[#5F6368];
+  }
+
+  .markdown-content ul {
+    @apply my-4 list-disc space-y-2 pl-6;
+  }
+
+  .markdown-content ol {
+    @apply my-4 list-decimal space-y-2 pl-6;
+  }
+
+  .markdown-content li {
+    @apply pl-1;
+  }
+
+  .markdown-content li > p {
+    @apply my-1;
+  }
+
+  .markdown-content hr {
+    @apply my-8 border-slate-200;
+  }
+
+  .markdown-content blockquote {
+    @apply my-6 border-l-4 border-[#4285F4] bg-[#E8F0FE]/50 py-3 pl-4 pr-2 italic text-[#3C4043];
+  }
+
+  .markdown-content .markdown-inline-code,
+  .markdown-content code:not(pre code) {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-[#1967D2];
+  }
+
+  .markdown-content pre {
+    @apply my-5 overflow-x-auto rounded-xl bg-slate-900 p-4 shadow-inner;
+  }
+
+  .markdown-content pre code {
+    @apply bg-transparent p-0 font-mono text-[13px] leading-6 text-green-400;
+  }
+
+  .markdown-content a {
+    @apply font-medium text-[#1967D2] underline decoration-[#D2E3FC] underline-offset-2 transition hover:text-[#4285F4] hover:decoration-[#4285F4];
+  }
+
+  .markdown-content table {
+    @apply my-6 w-full border-collapse overflow-hidden rounded-xl border border-slate-200 text-sm;
+  }
+
+  .markdown-content thead {
+    @apply bg-slate-900 text-white;
+  }
+
+  .markdown-content th {
+    @apply px-4 py-3 text-left text-xs font-bold uppercase tracking-wide;
+  }
+
+  .markdown-content td {
+    @apply border-t border-slate-100 px-4 py-3 align-top;
+  }
+
+  .markdown-content tbody tr:nth-child(even) {
+    @apply bg-slate-50;
   }
 }

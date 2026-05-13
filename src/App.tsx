@@ -26,6 +26,8 @@ import {
   Settings
 } from 'lucide-react';
 import presentationScript from '../presentation_script.md?raw';
+import presentationQa from '../presentation_qa.md?raw';
+import { MarkdownContent } from './MarkdownContent';
 
 // Google Cloud Brand Colors
 const GCP_COLORS = {
@@ -800,7 +802,7 @@ CLUSTER BY user_id, status;`}
           <p className="text-xl text-slate-500 font-medium tracking-wide">Let's discuss Slot management, Spanner split points, or Federation strategies.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-none">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-none">
           <a
             href="https://github.com/TheMasterRoot/Distributed-OLTP-vs-OLAP-on-GCP"
             target="_blank"
@@ -816,6 +818,13 @@ CLUSTER BY user_id, status;`}
           >
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#1967D2]">Speaker Notes</p>
             <p className="mt-2 text-sm font-bold text-slate-800">Open the full speech at /script</p>
+          </a>
+          <a
+            href="/qa"
+            className="rounded-2xl border border-[#FCE8E6] bg-[#FEF7F6] p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#EA4335]">Q&A Bank</p>
+            <p className="mt-2 text-sm font-bold text-slate-800">Open prepared Q&A at /qa</p>
           </a>
         </div>
 
@@ -864,9 +873,47 @@ function ScriptPage() {
         </div>
 
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-[#3C4043]">
-            {presentationScript}
-          </pre>
+          <MarkdownContent content={presentationScript} />
+        </article>
+      </main>
+    </div>
+  );
+}
+
+function QaPage() {
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] text-[#202124]">
+      <header className="sticky top-0 z-20 border-b border-[#FCE8E6] bg-white/95 backdrop-blur px-6 py-4">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FEF7F6] text-[#EA4335]">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#EA4335]">Q&A Bank</p>
+              <h1 className="text-xl font-black tracking-tight">Cloud Data Architecture at Scale</h1>
+            </div>
+          </div>
+
+          <a
+            href="/"
+            className="rounded-full border border-[#FCE8E6] bg-[#FEF7F6] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#EA4335] transition hover:bg-[#FCE8E6]"
+          >
+            Back to slides
+          </a>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mb-6 rounded-2xl border border-[#FCE8E6] bg-white p-5 shadow-sm">
+          <p className="text-sm leading-6 text-[#5F6368]">
+            This page exposes the prepared Q&A from <code className="rounded bg-slate-100 px-1.5 py-0.5">presentation_qa.md</code>,
+            so attendees can review anticipated questions and answers after the session.
+          </p>
+        </div>
+
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
+          <MarkdownContent content={presentationQa} />
         </article>
       </main>
     </div>
@@ -879,6 +926,10 @@ export default function App() {
 
   if (normalizedPath === '/script') {
     return <ScriptPage />;
+  }
+
+  if (normalizedPath === '/qa') {
+    return <QaPage />;
   }
 
   const nextSlide = useCallback(() => {
