@@ -25,9 +25,22 @@ import {
   Globe,
   Settings
 } from 'lucide-react';
-import presentationScript from '../presentation_script.md?raw';
-import presentationQa from '../presentation_qa.md?raw';
+import presentationScriptEn from '../presentation_script.md?raw';
+import presentationScriptPt from '../presentation_script.pt.md?raw';
+import presentationScriptEs from '../presentation_script.es.md?raw';
+import presentationQaEn from '../presentation_qa.md?raw';
+import presentationQaPt from '../presentation_qa.pt.md?raw';
+import presentationQaEs from '../presentation_qa.es.md?raw';
 import { MarkdownContent } from './MarkdownContent';
+import {
+  getInitialLanguage,
+  LanguageSelector,
+  persistLanguage,
+  translateNode,
+  translateText,
+  uiCopy,
+  type Language,
+} from './i18n';
 
 // Google Cloud Brand Colors
 const GCP_COLORS = {
@@ -38,6 +51,18 @@ const GCP_COLORS = {
   dark: '#202124',
   gray: '#5F6368',
   light: '#F8F9FA'
+};
+
+const scriptsByLanguage: Record<Language, string> = {
+  en: presentationScriptEn,
+  pt: presentationScriptPt,
+  es: presentationScriptEs,
+};
+
+const qaByLanguage: Record<Language, string> = {
+  en: presentationQaEn,
+  pt: presentationQaPt,
+  es: presentationQaEs,
 };
 
 interface Slide {
@@ -840,7 +865,14 @@ CLUSTER BY user_id, status;`}
   }
 ];
 
-function ScriptPage() {
+interface LocalizedPageProps {
+  language: Language;
+  onLanguageChange: (language: Language) => void;
+}
+
+function ScriptPage({ language, onLanguageChange }: LocalizedPageProps) {
+  const copy = uiCopy[language];
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#202124]">
       <header className="sticky top-0 z-20 border-b border-[#D2E3FC] bg-white/95 backdrop-blur px-6 py-4">
@@ -850,37 +882,41 @@ function ScriptPage() {
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#4285F4]">Presentation Script</p>
-              <h1 className="text-xl font-black tracking-tight">Cloud Data Architecture at Scale</h1>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#4285F4]">{copy.presentationScript}</p>
+              <h1 className="text-xl font-black tracking-tight">{translateText('Cloud Data Architecture at Scale', language)}</h1>
             </div>
           </div>
 
-          <a
-            href="/"
-            className="rounded-full border border-[#D2E3FC] bg-[#E8F0FE] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#1967D2] transition hover:bg-[#D2E3FC]"
-          >
-            Back to slides
-          </a>
+          <div className="flex items-center gap-3">
+            <LanguageSelector language={language} onLanguageChange={onLanguageChange} />
+            <a
+              href="/"
+              className="rounded-full border border-[#D2E3FC] bg-[#E8F0FE] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#1967D2] transition hover:bg-[#D2E3FC]"
+            >
+              {copy.backToSlides}
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-6 rounded-2xl border border-[#D2E3FC] bg-white p-5 shadow-sm">
           <p className="text-sm leading-6 text-[#5F6368]">
-            This page exposes the full speaker notes from <code className="rounded bg-slate-100 px-1.5 py-0.5">presentation_script.md</code>,
-            so attendees can follow the detailed speech during or after the session.
+            {copy.scriptIntro}
           </p>
         </div>
 
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
-          <MarkdownContent content={presentationScript} />
+          <MarkdownContent content={scriptsByLanguage[language]} />
         </article>
       </main>
     </div>
   );
 }
 
-function QaPage() {
+function QaPage({ language, onLanguageChange }: LocalizedPageProps) {
+  const copy = uiCopy[language];
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#202124]">
       <header className="sticky top-0 z-20 border-b border-[#FCE8E6] bg-white/95 backdrop-blur px-6 py-4">
@@ -890,30 +926,32 @@ function QaPage() {
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#EA4335]">Q&A Bank</p>
-              <h1 className="text-xl font-black tracking-tight">Cloud Data Architecture at Scale</h1>
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#EA4335]">{copy.qaBank}</p>
+              <h1 className="text-xl font-black tracking-tight">{translateText('Cloud Data Architecture at Scale', language)}</h1>
             </div>
           </div>
 
-          <a
-            href="/"
-            className="rounded-full border border-[#FCE8E6] bg-[#FEF7F6] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#EA4335] transition hover:bg-[#FCE8E6]"
-          >
-            Back to slides
-          </a>
+          <div className="flex items-center gap-3">
+            <LanguageSelector language={language} onLanguageChange={onLanguageChange} />
+            <a
+              href="/"
+              className="rounded-full border border-[#FCE8E6] bg-[#FEF7F6] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#EA4335] transition hover:bg-[#FCE8E6]"
+            >
+              {copy.backToSlides}
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-6 rounded-2xl border border-[#FCE8E6] bg-white p-5 shadow-sm">
           <p className="text-sm leading-6 text-[#5F6368]">
-            This page exposes the prepared Q&A from <code className="rounded bg-slate-100 px-1.5 py-0.5">presentation_qa.md</code>,
-            so attendees can review anticipated questions and answers after the session.
+            {copy.qaIntro}
           </p>
         </div>
 
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
-          <MarkdownContent content={presentationQa} />
+          <MarkdownContent content={qaByLanguage[language]} />
         </article>
       </main>
     </div>
@@ -922,14 +960,19 @@ function QaPage() {
 
 export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [language, setLanguage] = useState<Language>(getInitialLanguage);
   const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const handleLanguageChange = useCallback((nextLanguage: Language) => {
+    setLanguage(nextLanguage);
+    persistLanguage(nextLanguage);
+  }, []);
 
   if (normalizedPath === '/script') {
-    return <ScriptPage />;
+    return <ScriptPage language={language} onLanguageChange={handleLanguageChange} />;
   }
 
   if (normalizedPath === '/qa') {
-    return <QaPage />;
+    return <QaPage language={language} onLanguageChange={handleLanguageChange} />;
   }
 
   const nextSlide = useCallback(() => {
@@ -967,16 +1010,19 @@ export default function App() {
               <div className="w-2.5 h-6 bg-[#34A853] rounded-full translate-y-1.5 md:translate-y-2"></div>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#202124]">Data Architecture Masterclass</h1>
-              <p className="text-[10px] md:text-xs text-[#5F6368] font-bold uppercase tracking-widest leading-none">Architectural Decisions & Real-World Pitfalls</p>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#202124]">{translateText('Data Architecture Masterclass', language)}</h1>
+              <p className="text-[10px] md:text-xs text-[#5F6368] font-bold uppercase tracking-widest leading-none">
+                {translateText('Architectural Decisions & Real-World Pitfalls', language)}
+              </p>
             </div>
           </div>
-          <div className="text-right hidden sm:block">
+          <div className="flex items-center gap-3 text-right">
+            <LanguageSelector language={language} onLanguageChange={handleLanguageChange} />
             <a
               href="/script"
-              className="text-[10px] md:text-xs font-bold text-[#4285F4] bg-[#E8F0FE] px-3 py-1 rounded-full inline-block border border-[#D2E3FC] transition hover:bg-[#D2E3FC]"
+              className="hidden text-[10px] md:text-xs font-bold text-[#4285F4] bg-[#E8F0FE] px-3 py-1 rounded-full border border-[#D2E3FC] transition hover:bg-[#D2E3FC] sm:inline-block"
             >
-              SESSION: POD GDC-02
+              {translateText('SESSION: POD GDC-02', language)}
               <span className="ml-2 text-[#1967D2]">/script</span>
             </a>
           </div>
@@ -998,12 +1044,12 @@ export default function App() {
                 <div className="mb-4 hidden md:block">
                   <div className="flex items-center gap-2 text-[#4285F4] font-bold text-sm uppercase tracking-tighter">
                      <span className="w-8 h-0.5 bg-[#4285F4]"></span>
-                     <span>Slide {String(currentSlide + 1).padStart(2, '0')} — {slide.title}</span>
+                     <span>Slide {String(currentSlide + 1).padStart(2, '0')} — {translateText(slide.title, language)}</span>
                   </div>
                 </div>
 
                 <div className="min-h-0 flex-grow flex items-center justify-center">
-                  {slide.content}
+                  {translateNode(slide.content, language)}
                 </div>
               </div>
             </motion.div>
@@ -1039,14 +1085,16 @@ export default function App() {
         {/* Footer Bar */}
         <footer className="h-10 md:h-12 bg-[#E8F0FE] flex items-center px-6 md:px-10 justify-between z-30 border-t border-[#D2E3FC]">
           <div className="flex gap-4 md:gap-6 text-[8px] md:text-[10px] font-bold text-[#1967D2] uppercase tracking-wider">
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> Horizontal Scaling</span>
-            <span className="hidden sm:flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> TrueTime Consistency</span>
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> Columnar Magic</span>
+            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('Horizontal Scaling', language)}</span>
+            <span className="hidden sm:flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('TrueTime Consistency', language)}</span>
+            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('Columnar Magic', language)}</span>
           </div>
           
           <div className="flex items-center gap-3">
             <div className="text-[9px] md:text-[10px] text-gray-500 font-medium uppercase tracking-tight hidden sm:block">
-              {currentSlide + 1 < slides.length ? `Next: ${slides[currentSlide + 1].title}` : "End of Presentation"}
+              {currentSlide + 1 < slides.length
+                ? `${translateText('Next: ', language)}${translateText(slides[currentSlide + 1].title, language)}`
+                : translateText('End of Presentation', language)}
             </div>
             <div className="flex gap-1 h-3">
                {slides.map((_, i) => (
