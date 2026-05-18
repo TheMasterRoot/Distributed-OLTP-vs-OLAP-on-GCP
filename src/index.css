@@ -13,7 +13,7 @@
 
 @layer components {
   .markdown-content {
-    @apply text-[15px] leading-7 text-[#3C4043];
+    @apply text-lg leading-8 text-[#3C4043];
   }
 
   .markdown-content > *:first-child {
@@ -25,19 +25,19 @@
   }
 
   .markdown-content h1 {
-    @apply mt-0 mb-6 text-3xl font-black tracking-tight text-[#202124];
+    @apply mt-0 mb-6 text-5xl font-black tracking-tight text-[#202124];
   }
 
   .markdown-content h2 {
-    @apply mt-10 mb-4 border-b border-slate-200 pb-2 text-xl font-black text-[#202124];
+    @apply mt-10 mb-4 border-b border-slate-200 pb-2 text-3xl font-black text-[#202124];
   }
 
   .markdown-content h3 {
-    @apply mt-8 mb-3 text-base font-bold text-[#1967D2];
+    @apply mt-8 mb-3 text-xl font-bold text-[#1967D2];
   }
 
   .markdown-content h4 {
-    @apply mt-6 mb-2 text-sm font-bold text-[#5F6368] uppercase tracking-wide;
+    @apply mt-6 mb-2 text-lg font-bold text-[#5F6368] uppercase tracking-wide;
   }
 
   .markdown-content p {
@@ -78,7 +78,7 @@
 
   .markdown-content .markdown-inline-code,
   .markdown-content code:not(pre code) {
-    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[13px] text-[#1967D2];
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-base text-[#1967D2];
   }
 
   .markdown-content pre {
@@ -86,7 +86,7 @@
   }
 
   .markdown-content pre code {
-    @apply bg-transparent p-0 font-mono text-[13px] leading-6 text-green-400;
+    @apply bg-transparent p-0 font-mono text-base leading-7 text-green-400;
   }
 
   .markdown-content a {
@@ -94,7 +94,7 @@
   }
 
   .markdown-content table {
-    @apply my-6 w-full border-collapse overflow-hidden rounded-xl border border-slate-200 text-sm;
+    @apply my-6 w-full border-collapse overflow-hidden rounded-xl border border-slate-200 text-base;
   }
 
   .markdown-content thead {
@@ -102,7 +102,7 @@
   }
 
   .markdown-content th {
-    @apply px-4 py-3 text-left text-xs font-bold uppercase tracking-wide;
+    @apply px-4 py-3 text-left text-sm font-bold uppercase tracking-wide;
   }
 
   .markdown-content td {
