@@ -112,68 +112,156 @@ const slides: Slide[] = [
   },
   {
     id: 'session-roadmap',
-    title: 'What We Will Cover Today',
+    title: 'Why OLTP and OLAP Exist',
     accentColor: GCP_COLORS.blue,
     content: (
-      <div className="w-full max-w-none">
-        <div className="mb-8 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.35em] text-[#4285F4]">Session Roadmap</p>
-          <h2 className="mt-3 text-4xl font-black tracking-tight text-[#202124]">From OLTP Limits to OLAP Scale</h2>
+      <div className="grid h-full w-full max-w-none grid-cols-1 gap-5 md:grid-cols-[0.9fr_1.1fr]">
+        <div className="flex min-h-0 flex-col justify-center rounded-3xl bg-[#202124] p-6 text-white shadow-2xl">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.32em] text-[#FBBC04]">Start with the workload</p>
+          <h2 className="text-3xl font-black leading-tight tracking-tight">
+            The database is not the strategy. The workload is.
+          </h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            OLTP and OLAP solve different business questions. One protects the transaction while it happens; the other explains what happened across millions or billions of events.
+          </p>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#D2E3FC]">Guiding question</p>
+            <p className="mt-2 text-xl font-black text-white">Am I changing the state of the business or analyzing its history?</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid min-h-0 grid-cols-1 gap-4 md:grid-cols-2">
           {[
             {
               icon: Database,
-              title: 'OLTP Growth Wall',
-              text: 'Cloud SQL internals, MVCC, WAL, bloat, indexes, and the moment vertical scaling stops helping.',
+              title: '1. Operational truth',
+              text: 'Orders, payments, inventory, login sessions, account balances. Small writes must be correct now.',
               color: GCP_COLORS.blue
             },
             {
-              icon: Settings,
-              title: 'Distributed OLTP',
-              text: 'Manual sharding, hash vs range distribution, consistent hashing, hotspots, and Spanner key design.',
+              icon: ArrowRightLeft,
+              title: '2. Movement without damage',
+              text: 'CDC and streaming move facts out of production so analytics do not steal CPU, locks, or IOPS from users.',
               color: GCP_COLORS.red
             },
             {
               icon: BarChart3,
-              title: 'OLAP with BigQuery',
-              text: 'Dremel, slots, clustering, partitioning, shuffle, nested fields, and analytical cost control.',
+              title: '3. Analytical memory',
+              text: 'Revenue trends, cohorts, fraud signals, forecasting, dashboards. Big scans are expected, not accidental.',
               color: GCP_COLORS.green
             },
             {
-              icon: ArrowRightLeft,
-              title: 'Data Movement',
-              text: 'CDC, Datastream, Zero-ETL patterns, federated queries, and how to avoid hurting production.',
-              color: GCP_COLORS.yellow
-            },
-            {
-              icon: Cpu,
-              title: 'Under the Hood',
-              text: 'TrueTime, Paxos, Dremel trees, query execution plans, and the real physics behind the services.',
-              color: GCP_COLORS.dark
-            },
-            {
               icon: Layers,
-              title: 'Practical Takeaways',
-              text: 'Architecture rules you can reuse when choosing between Cloud SQL, Spanner, and BigQuery.',
-              color: GCP_COLORS.blue
+              title: '4. Architecture decision',
+              text: 'Cloud SQL, Spanner, AlloyDB, and BigQuery are not interchangeable. Each optimizes a different shape of work.',
+              color: GCP_COLORS.yellow
             }
           ].map((item, index) => {
             const Icon = item.icon;
             return (
-              <div key={item.title} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                <div className="absolute right-4 top-4 text-5xl font-black text-slate-100">{String(index + 1).padStart(2, '0')}</div>
-                <div className="relative">
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg" style={{ backgroundColor: item.color }}>
+              <div key={item.title} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute right-5 top-4 text-5xl font-black text-slate-100">{String(index + 1).padStart(2, '0')}</div>
+                <div className="relative flex gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg" style={{ backgroundColor: item.color }}>
                     <Icon className="h-6 w-6" />
                   </div>
-                  <h3 className="mb-3 text-lg font-black text-[#202124]">{item.title}</h3>
-                  <p className="text-sm leading-6 text-[#5F6368]">{item.text}</p>
+                  <div>
+                    <h3 className="mb-1 text-lg font-black text-[#202124]">{item.title}</h3>
+                    <p className="text-sm leading-6 text-[#5F6368]">{item.text}</p>
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      </div>
+    )
+  },
+  {
+    id: 'oltp-vs-olap-purpose',
+    title: 'OLTP vs OLAP: What Each One Is Good At',
+    accentColor: GCP_COLORS.green,
+    content: (
+      <div className="grid h-full w-full max-w-none grid-cols-1 gap-4 md:grid-cols-[1fr_0.9fr_1fr]">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-[#D2E3FC] bg-white shadow-xl">
+          <div className="bg-[#E8F0FE] p-3">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#1967D2]">OLTP</p>
+            <h3 className="mt-1 text-xl font-black text-[#202124]">Run the business</h3>
+            <p className="mt-1 text-xs leading-5 text-[#3C4043]">Fast, consistent transactions for operational systems.</p>
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5 p-3">
+            {[
+              ['Good at', 'checkout, payments, stock updates, user actions'],
+              ['Optimized for', 'low latency, ACID, many small reads and writes'],
+              ['Watch out for', 'big scans, ad hoc reports, dashboard traffic']
+            ].map(([label, text]) => (
+              <div key={label} className="rounded-xl border border-blue-100 bg-blue-50/70 p-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#1967D2]">{label}</p>
+                <p className="mt-0.5 text-xs font-bold leading-4 text-slate-800">{text}</p>
+              </div>
+            ))}
+            <div className="mt-auto rounded-xl bg-[#1967D2] p-2 text-white">
+              <p className="text-xs font-black">Best fit: Cloud SQL, AlloyDB, Spanner</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-col justify-center rounded-3xl bg-[#202124] p-4 text-white shadow-2xl">
+          <p className="mb-3 text-center text-xs font-black uppercase tracking-[0.25em] text-[#FBBC04]">Workload Signal</p>
+          <div className="space-y-3">
+            {[
+              ['Latency sensitive', 95, 35],
+              ['Transactional writes', 90, 25],
+              ['Historical scans', 25, 95],
+              ['Aggregations', 35, 90]
+            ].map(([label, oltp, olap]) => (
+              <div key={label} className="space-y-2">
+                <div className="flex items-center justify-between text-sm font-bold">
+                  <span>{label}</span>
+                  <span className="text-[11px] uppercase tracking-widest text-slate-400">OLTP / OLAP</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-[#4285F4]" style={{ width: `${oltp}%` }} />
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-[#34A853]" style={{ width: `${olap}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-2xl bg-[#4285F4] px-3 py-2">
+              <p className="text-sm font-black">ms: OLTP thinks in latency</p>
+            </div>
+            <div className="rounded-2xl bg-[#34A853] px-3 py-2">
+              <p className="text-sm font-black">TB: OLAP thinks in volume</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-green-100 bg-white shadow-xl">
+          <div className="bg-green-50 p-3">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#188038]">OLAP</p>
+            <h3 className="mt-1 text-xl font-black text-[#202124]">Understand the business</h3>
+            <p className="mt-1 text-xs leading-5 text-[#3C4043]">Large-scale analysis for decisions, reporting, and discovery.</p>
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5 p-3">
+            {[
+              ['Good at', 'dashboards, cohorts, forecasting, fraud analysis'],
+              ['Optimized for', 'column scans, joins, aggregates, cheap storage'],
+              ['Watch out for', 'single-row updates, high-frequency transactions']
+            ].map(([label, text]) => (
+              <div key={label} className="rounded-xl border border-green-100 bg-green-50/70 p-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#188038]">{label}</p>
+                <p className="mt-0.5 text-xs font-bold leading-4 text-slate-800">{text}</p>
+              </div>
+            ))}
+            <div className="mt-auto rounded-xl bg-[#188038] p-2 text-white">
+              <p className="text-xs font-black">Best fit: BigQuery, Looker, BI Engine</p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -1001,7 +1089,7 @@ export default function App() {
       <div className="w-full h-full bg-white text-[#3C4043] font-sans overflow-hidden flex flex-col border-[6px] md:border-[8px] border-[#4285F4] shadow-2xl relative">
         
         {/* Header Section */}
-        <header className="h-20 md:h-24 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20">
+        <header className="h-16 md:h-[72px] bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-10 z-20">
           <div className="flex items-center gap-4">
             <div className="flex gap-1">
               <div className="w-2.5 h-6 bg-[#4285F4] rounded-full"></div>
@@ -1037,18 +1125,18 @@ export default function App() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 1.02, y: -10 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full h-full px-14 py-4 md:px-20 md:py-5 flex flex-col items-center justify-center"
+              className="w-full h-full px-12 py-3 md:px-16 md:py-4 flex flex-col items-center justify-center"
             >
               <div className="w-full h-full max-w-none mx-auto flex flex-col">
                 {/* Slide Title Indicator */}
-                <div className="mb-4 hidden md:block">
-                  <div className="flex items-center gap-2 text-[#4285F4] font-bold text-sm uppercase tracking-tighter">
+                <div className="mb-2 hidden md:block">
+                  <div className="flex items-center gap-2 text-[#4285F4] font-bold text-base uppercase tracking-tighter">
                      <span className="w-8 h-0.5 bg-[#4285F4]"></span>
                      <span>Slide {String(currentSlide + 1).padStart(2, '0')} — {translateText(slide.title, language)}</span>
                   </div>
                 </div>
 
-                <div className="min-h-0 flex-grow flex items-center justify-center">
+                <div className="min-h-0 flex-grow flex items-center justify-center text-[1.06rem]">
                   {translateNode(slide.content, language)}
                 </div>
               </div>
@@ -1083,15 +1171,15 @@ export default function App() {
         </div>
 
         {/* Footer Bar */}
-        <footer className="h-10 md:h-12 bg-[#E8F0FE] flex items-center px-6 md:px-10 justify-between z-30 border-t border-[#D2E3FC]">
-          <div className="flex gap-4 md:gap-6 text-[8px] md:text-[10px] font-bold text-[#1967D2] uppercase tracking-wider">
+        <footer className="h-9 md:h-10 bg-[#E8F0FE] flex items-center px-6 md:px-10 justify-between z-30 border-t border-[#D2E3FC]">
+          <div className="flex gap-4 md:gap-6 text-[9px] md:text-xs font-bold text-[#1967D2] uppercase tracking-wider">
             <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('Horizontal Scaling', language)}</span>
             <span className="hidden sm:flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('TrueTime Consistency', language)}</span>
             <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#4285F4]"></div> {translateText('Columnar Magic', language)}</span>
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="text-[9px] md:text-[10px] text-gray-500 font-medium uppercase tracking-tight hidden sm:block">
+            <div className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-tight hidden sm:block">
               {currentSlide + 1 < slides.length
                 ? `${translateText('Next: ', language)}${translateText(slides[currentSlide + 1].title, language)}`
                 : translateText('End of Presentation', language)}
